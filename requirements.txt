@@ -1,0 +1,6 @@
+Flask==2.3.2
+Flask-SQLAlchemy==3.0.3
+Flask-Migrate==4.0.4
+mysql-connector-python==8.0.32
+python-dotenv==1.0.0
+baostock==0.8.9
