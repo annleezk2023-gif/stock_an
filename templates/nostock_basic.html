@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #2196F3;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .pagination a {
+            color: #2196F3;
+            padding: 8px 16px;
+            text-decoration: none;
+            border: 1px solid #ddd;
+            margin: 0 4px;
+            border-radius: 4px;
+        }
+        .pagination a.active {
+            background-color: #2196F3;
+            color: white;
+            border: 1px solid #2196F3;
+        }
+        .pagination a:hover:not(.active) {
+            background-color: #ddd;
+        }
+        .page-size-selector {
+            margin-bottom: 20px;
+            text-align: right;
+        }
+        .page-size-selector select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .back-link a {
+            color: #2196F3;
+            text-decoration: none;
+        }
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 每页显示数量选择器 -->
+        <div class="page-size-selector">
+            <label for="per_page">每页显示数量：</label>
+            <select id="per_page" onchange="changePageSize()">
+                <option value="100" {{ 'selected' if per_page == 100 else '' }}>100</option>
+                <option value="200" {{ 'selected' if per_page == 200 else '' }}>200</option>
+                <option value="500" {{ 'selected' if per_page == 500 else '' }}>500</option>
+            </select>
+        </div>
+        
+        <!-- 数据表格 -->
+        <table>
+            <thead>
+                <tr>
+                    <th>证券代码</th>
+                    <th>证券名称</th>
+                    <th>上市日期</th>
+                    <th>退市日期</th>
+                    <th>证券类型</th>
+                    <th>上市状态</th>
+                    <th>标签</th>
+                    <th>备注</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if nostock_basics %}
+                    {% for nostock in nostock_basics %}
+                        <tr>
+                            <td>{{ nostock.code }}</td>
+                            <td><a href="{{ url_for('nostock_trade_page', code=nostock.code) }}"  target="_blank">{{ nostock.code_name }}</a></td>
+                            <td>{{ nostock.ipo_date if nostock.ipo_date else '-' }}</td>
+                            <td>{{ nostock.out_date if nostock.out_date else '-' }}</td>
+                            <td>
+                                {% if nostock.type == '1' %}GP
+                                {% elif nostock.type == '2' %}指数
+                                {% elif nostock.type == '3' %}其它
+                                {% else %}{{ nostock.type }}{% endif %}
+                            </td>
+                            <td>
+                                {% if nostock.status == '1' %}上市
+                                {% elif nostock.status == '0' %}退市
+                                {% else %}{{ nostock.status }}{% endif %}
+                            </td>
+                            <td>
+                                {% if nostock.tags %}
+                                    {% for tag in nostock.tags %}
+                                        <span style="background-color: #2196F3; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">{{ tag }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                        </td>
+                        <td>
+                            <div style="max-width: 200px; word-wrap: break-word;">
+                                {{ nostock.remark if nostock.remark else '-' }}
+                            </div>
+                        </td>
+                        <td>
+                            <button onclick="editTags({{ nostock.id }}, '{{ nostock.code }}', '{{ nostock.code_name }}', {% if nostock.tags is none %}null{% else %}{{ nostock.tags }}{% endif %})" style="background-color: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-bottom: 5px; display: block;">编辑标签</button>
+                            <button onclick="editRemark({{ nostock.id }}, '{{ nostock.code }}', '{{ nostock.code_name }}', {{ nostock.remark | tojson | safe }})" style="background-color: #FF9800; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; display: block;">编辑备注</button>
+                        </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 20px;">暂无数据</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        
+        <!-- 分页导航 -->
+        {% if pagination %}
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                    <a href="?page={{ pagination.prev_num }}&per_page={{ per_page }}">上一页</a>
+                {% else %}
+                    <a href="#" style="opacity: 0.5; cursor: not-allowed;">上一页</a>
+                {% endif %}
+                
+                {% for page_num in pagination.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                            <a href="?page={{ page_num }}&per_page={{ per_page }}" class="active">{{ page_num }}</a>
+                        {% else %}
+                            <a href="?page={{ page_num }}&per_page={{ per_page }}">{{ page_num }}</a>
+                        {% endif %}
+                    {% else %}
+                        <span>...</span>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagination.has_next %}
+                    <a href="?page={{ pagination.next_num }}&per_page={{ per_page }}">下一页</a>
+                {% else %}
+                    <a href="#" style="opacity: 0.5; cursor: not-allowed;">下一页</a>
+                {% endif %}
+            </div>
+        {% endif %}
+        
+        <!-- 返回首页链接 -->
+        <div class="back-link">
+            <a href="/">返回首页</a>
+        </div>
+    </div>
+    
+    <!-- 标签编辑弹窗 -->
+    <div id="tagsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background-color: white; padding: 20px; border-radius: 8px; width: 500px; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
+            <h2>编辑标签 - <span id="modalStockName"></span></h2>
+            <input type="hidden" id="modalStockId">
+            <input type="hidden" id="modalStockCode">
+            
+            <div style="margin: 20px 0;">
+                <p>可选标签：</p>
+                <div id="availableTags" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                            <input type="checkbox" class="tagCheckbox" value="观察" style="margin-right: 5px;">观察
+                        </label>
+                        <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                            <input type="checkbox" class="tagCheckbox" value="量化" style="margin-right: 5px;">量化
+                        </label>
+                        <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                            <input type="checkbox" class="tagCheckbox" value="不看" style="margin-right: 5px;">不看
+                        </label>
+                </div>
+            </div>
+            
+            <div style="text-align: right;">
+                <button onclick="closeTagsModal()" style="background-color: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">取消</button>
+                <button onclick="saveTags()" style="background-color: #2196F3; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 更改每页显示数量
+        function changePageSize() {
+            const per_page = document.getElementById('per_page').value;
+            window.location.href = `?page=1&per_page=${per_page}`;
+        }
+        
+        // 打开标签编辑弹窗
+        function editTags(stockId, stockCode, stockName, currentTags) {
+            document.getElementById('modalStockId').value = stockId;
+            document.getElementById('modalStockCode').value = stockCode;
+            document.getElementById('modalStockName').textContent = stockName;
+            
+            // 重置所有复选框
+            const checkboxes = document.querySelectorAll('.tagCheckbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            console.log('currentTags', currentTags);
+
+            // 如果有现有标签，选中对应的复选框
+            if (currentTags && Array.isArray(currentTags)) {
+                currentTags.forEach(tag => {
+                    const checkbox = document.querySelector(`.tagCheckbox[value="${tag}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+            }
+            
+            // 显示弹窗
+            document.getElementById('tagsModal').style.display = 'flex';
+        }
+        
+        // 关闭标签编辑弹窗
+        function closeTagsModal() {
+            document.getElementById('tagsModal').style.display = 'none';
+        }
+        
+        // 保存标签
+        function saveTags() {
+            const stockId = document.getElementById('modalStockId').value;
+            const stockCode = document.getElementById('modalStockCode').value;
+            
+            // 获取选中的标签
+            const selectedTags = [];
+            const checkboxes = document.querySelectorAll('.tagCheckbox:checked');
+            checkboxes.forEach(checkbox => {
+                selectedTags.push(checkbox.value);
+            });
+            
+            // 发送AJAX请求保存标签
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `/nostock_basic/save_tags/${stockId}`, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        // 关闭弹窗并刷新页面
+                        closeTagsModal();
+                        location.reload();
+                    } else {
+                        alert('保存失败：' + xhr.responseText);
+                    }
+                }
+            };
+            xhr.send(JSON.stringify({ tags: selectedTags }));
+        }
+        
+        // 打开备注编辑弹窗
+        function editRemark(stockId, stockCode, stockName, currentRemark) {
+            document.getElementById('remarkModalStockId').value = stockId;
+            document.getElementById('remarkModalStockCode').value = stockCode;
+            document.getElementById('remarkModalStockName').textContent = stockName;
+            
+            // 设置现有备注内容
+            document.getElementById('remarkTextarea').value = currentRemark || '';
+            
+            // 显示弹窗
+            document.getElementById('remarkModal').style.display = 'flex';
+        }
+        
+        // 关闭备注编辑弹窗
+        function closeRemarkModal() {
+            document.getElementById('remarkModal').style.display = 'none';
+        }
+        
+        // 保存备注
+        function saveRemark() {
+            const stockId = document.getElementById('remarkModalStockId').value;
+            const remark = document.getElementById('remarkTextarea').value;
+            
+            // 发送AJAX请求保存备注
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `/nostock_basic/save_remark/${stockId}`, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        // 关闭弹窗并刷新页面
+                        closeRemarkModal();
+                        location.reload();
+                    } else {
+                        alert('保存失败：' + xhr.responseText);
+                    }
+                }
+            };
+            xhr.send(JSON.stringify({ remark: remark }));
+        }
+    </script>
+    
+    <!-- 备注编辑弹窗 -->
+    <div id="remarkModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background-color: white; padding: 20px; border-radius: 8px; width: 600px; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
+            <h2>编辑备注 - <span id="remarkModalStockName"></span></h2>
+            <input type="hidden" id="remarkModalStockId">
+            <input type="hidden" id="remarkModalStockCode">
+            
+            <div style="margin: 20px 0;">
+                <p>备注内容（最多1000个文字）：</p>
+                <textarea id="remarkTextarea" rows="10" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; resize: vertical;" maxlength="1000"></textarea>
+                <div style="text-align: right; margin-top: 5px; font-size: 12px; color: #666;">
+                    <span id="charCount">0</span>/1000
+                </div>
+            </div>
+            
+            <div style="text-align: right;">
+                <button onclick="closeRemarkModal()" style="background-color: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">取消</button>
+                <button onclick="saveRemark()" style="background-color: #2196F3; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 字符计数功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const textarea = document.getElementById('remarkTextarea');
+            const charCount = document.getElementById('charCount');
+            
+            if (textarea && charCount) {
+                textarea.addEventListener('input', function() {
+                    const count = this.value.length;
+                    charCount.textContent = count;
+                    
+                    // 当接近字数限制时改变颜色
+                    if (count > 900) {
+                        charCount.style.color = '#FF9800';
+                    } else {
+                        charCount.style.color = '#666';
+                    }
+                    
+                    // 当达到字数限制时改变颜色为红色
+                    if (count === 1000) {
+                        charCount.style.color = '#f44336';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

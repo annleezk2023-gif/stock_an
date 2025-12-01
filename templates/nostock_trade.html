@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ stock_code }} - {{ stock_name }} 日K数据</title>
+    <!-- 添加Chart.js和moment.js库 -->
+    <!-- 修复Chart.js和相关插件的引入顺序，确保Chart.js在所有依赖它的插件之前加载 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #2196F3;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .back-link a {
+            color: #2196F3;
+            text-decoration: none;
+        }
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .stock-info {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f0f8ff;
+            border-radius: 5px;
+        }
+        .pagination {
+            display: none; /* 不分页 */
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        .chart-controls {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .chart-controls button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 0 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .chart-controls button:hover {
+            background-color: #0b7dda;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="stock-info">
+            <h1>{{ stock_name }} ({{ stock_code }}) 日K数据</h1>
+            <p>数据总量: {{ total_count }} 条</p>
+        </div>
+        
+        <!-- 图表容器 -->
+        <div class="chart-controls">
+            <label for="timeUnit">时间单位：</label>
+            <select id="timeUnit">
+                <option value="day">日</option>
+                <option value="week">周</option>
+                <option value="month">月</option>
+                <option value="quarter">季</option>
+            </select>
+            <button id="resetZoom">重置缩放</button>
+        </div>
+        <div class="chart-container">
+            <canvas id="klineChart"></canvas>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>开盘价</th>
+                        <th>最高</th>
+                        <th>最低</th>
+                        <th>收盘价</th>
+                        <th>成交量</th>
+                        <th>成交额</th>
+                        <th>复权状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trade in trades %}
+                    <tr>
+                        <td>{{ trade.date }}</td>
+                        <td>{{ trade.open }}</td>
+                        <td>{{ trade.high }}</td>
+                        <td>{{ trade.low }}</td>
+                        <td>{{ trade.close }}</td>
+                        <td>{{ trade.volume }}</td>
+                        <td>{{ trade.amount }}</td>
+                        <td>{{ '后复权' if trade.adjustflag == 1 else '不复权' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="back-link">
+            <a href="{{ url_for('nostock_basic_page') }}">返回非GP基本信息列表</a>
+        </div>
+    </div>
+
+    <script>
+        // 从页面数据中提取完整的交易数据
+        const fullTradeData = [
+            {% for trade in trades %}
+                {
+                    date: '{{ trade.date }}',
+                    low: {{ trade.low }},
+                    high: {{ trade.high }},
+                    open: {{ trade.open }},
+                    close: {{ trade.close }},
+                    volume: {{ trade.volume }},
+                    amount: {{ trade.amount }}
+                }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        // 数据聚合函数
+        function aggregateData(data, unit) {
+            const aggregated = {};
+            
+            data.forEach(item => {
+                let key;
+                const date = moment(item.date);
+                
+                switch(unit) {
+                      case 'week':
+                         // 按周聚合，格式：YYYY-WW
+                         key = date.format('YYYY-[W]WW');
+                          break;
+                    case 'month':
+                        // 按月聚合，格式：YYYY-MM
+                        key = date.format('YYYY-MM');
+                        break;
+                    case 'quarter':
+                        // 按季聚合，格式：YYYY-Qn
+                        const quarter = Math.floor((date.month() + 3) / 3);
+                        key = date.format('YYYY') + '-Q' + quarter;
+                        break;
+                    case 'day':
+                    default:
+                        // 按日聚合，直接使用日期
+                        key = item.date;
+                        break;
+                }
+                
+                if (!aggregated[key]) {
+                    aggregated[key] = {
+                        date: key,
+                        // 保存每周的第一个实际日期，用于周数据的显示
+                        displayDate: unit === 'week' ? item.date : key,
+                        firstOpen: item.open,
+                        lastClose: item.close,
+                        minLow: item.low,
+                        maxHigh: item.high,
+                        totalVolume: item.volume,
+                        totalAmount: item.amount,
+                        count: 1
+                    };
+                } else {
+                    aggregated[key].minLow = Math.min(aggregated[key].minLow, item.low);
+                    aggregated[key].maxHigh = Math.max(aggregated[key].maxHigh, item.high);
+                    aggregated[key].totalVolume += item.volume;
+                    aggregated[key].totalAmount += item.amount;
+                    aggregated[key].lastClose = item.close;
+                    aggregated[key].count += 1;
+                }
+            });
+            
+            // 转换为数组并排序
+            const result = Object.values(aggregated).sort((a, b) => {
+                // 对于非日数据，需要特殊处理排序
+                if (unit === 'week') {
+                    return a.date.localeCompare(b.date);
+                } else if (unit === 'month') {
+                    return a.date.localeCompare(b.date);
+                } else if (unit === 'quarter') {
+                    return a.date.localeCompare(b.date);
+                }
+                return a.date.localeCompare(b.date);
+            });
+            
+            // 当时间单位为日时，仅显示最近3年的数据
+            if (unit === 'day') {
+                const threeYearsAgo = moment().subtract(3, 'years').format('YYYY-MM-DD');
+                const recentThreeYearsData = result.filter(item => item.date >= threeYearsAgo);
+                return recentThreeYearsData;
+            }
+            
+            return result;
+        }
+        
+        // 初始化图表
+        document.addEventListener('DOMContentLoaded', function() {
+            // 确保DOM加载完成后再初始化图表
+            if (typeof Chart !== 'undefined') {
+                const ctx = document.getElementById('klineChart').getContext('2d');
+                
+                // 初始化时使用日数据
+                const initialData = aggregateData(fullTradeData, 'day');
+                // 对于周数据，使用displayDate字段显示第一个数据的日期
+                const labels = initialData.map(item => item.displayDate || item.date);
+                // 去掉最高的小数点
+                const highData = initialData.map(item => Math.round(item.maxHigh));
+                // 计算高低差价（最高-最低）并乘以系数，再除以数据条数，使其与最高折线距离接近，并去掉小数点
+                const DIFF_COEFFICIENT = 5; // 可以根据实际显示效果调整此系数
+                const highLowDiffData = initialData.map(item => Math.round((item.maxHigh - item.minLow) * DIFF_COEFFICIENT / item.count));
+                const amountData = initialData.map(item => parseFloat((item.totalAmount / 100000000).toFixed(2)));
+                
+                // 创建图表实例
+                window.klineChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                        {
+                            label: '最高',
+                            data: highData,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            borderWidth: 1,
+                            fill: false,
+                            tension: 0.1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '高低差价',
+                            data: highLowDiffData,
+                            borderColor: 'rgb(255, 206, 86)',
+                            backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                            borderWidth: 1,
+                            fill: false,
+                            tension: 0.1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '成交额(亿)',
+                            data: amountData,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            borderWidth: 1,
+                            fill: false,
+                            type: 'bar',
+                            yAxisID: 'y1'
+                        }
+                    ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        stacked: false,
+                        scales: {
+                            x: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: '日期'
+                                },
+                                ticks: {
+                                    autoSkip: true,
+                                    maxTicksLimit: 10
+                                },
+                                reverse: false // 不反转时间轴顺序，使左边显示最远时间，右边显示最近时间
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: '价格'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: '成交额(亿)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                },
+                            },
+                        },
+                        plugins: {
+                            zoom: {
+                                pan: {
+                                    enabled: true,
+                                    mode: 'x'
+                                },
+                                zoom: {
+                                    wheel: {
+                                        enabled: true,
+                                    },
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    mode: 'x',
+                                }
+                            }
+                        }
+                    },
+                    plugins: [ChartZoom]
+                });
+            } else {
+                console.error('Chart.js库未加载成功');
+            }
+        });
+        
+        // 更新图表数据
+        function updateChart(unit) {
+            const aggregatedData = aggregateData(fullTradeData, unit);
+            
+            // 准备图表数据
+            // 对于周数据，使用displayDate字段显示第一个数据的日期
+            const labels = aggregatedData.map(item => item.displayDate || item.date);
+            // 去掉最高的小数点
+            const highData = aggregatedData.map(item => Math.round(item.maxHigh));
+            // 根据时间单位选择不同的系数，使高低差价折线与最高折线距离更接近
+            let DIFF_COEFFICIENT = 5; // 日数据的默认系数
+            if (unit === 'week') {
+                DIFF_COEFFICIENT = 8; // 周数据的系数，使距离更接近
+            } else if (unit === 'month') {
+                DIFF_COEFFICIENT = 15; // 月数据的系数，使距离更接近
+            } else if (unit === 'quarter') {
+                DIFF_COEFFICIENT = 25; // 季数据的系数，使距离更接近
+            }
+            
+            // 计算高低差价并应用系数
+            const highLowDiffData = aggregatedData.map(item => Math.round((item.maxHigh - item.minLow) * DIFF_COEFFICIENT / item.count));
+            // 将成交额转换为以亿为单位
+            const amountData = aggregatedData.map(item => parseFloat((item.totalAmount / 100000000).toFixed(2)));
+            
+            // 使用全局的klineChart对象
+            if (window.klineChart) {
+                window.klineChart.data.labels = labels;
+                window.klineChart.data.datasets[0].data = highData;
+                window.klineChart.data.datasets[1].data = highLowDiffData;
+                window.klineChart.data.datasets[2].data = amountData;
+                
+                // 更新图表标题
+                let title = '日K数据';
+                switch(unit) {
+                    case 'week':
+                        title = '周K数据';
+                        break;
+                    case 'month':
+                        title = '月K数据';
+                        break;
+                    case 'quarter':
+                        title = '季K数据';
+                        break;
+                }
+                document.querySelector('.stock-info h1').textContent = 
+                    '{{ stock_name }} ({{ stock_code }}) ' + title;
+                
+                // 确保时间轴从左到右为从远到近的日期
+                window.klineChart.options.scales.x.reverse = false;
+                
+                window.klineChart.update();
+            } else {
+                console.error('图表实例未找到');
+            }
+        }
+
+        // 重置缩放按钮事件
+        document.getElementById('resetZoom').addEventListener('click', function() {
+            if (window.klineChart) {
+                window.klineChart.resetZoom();
+            } else {
+                console.error('图表实例未找到');
+            }
+        });
+        
+        // 时间单位选择器事件
+        document.getElementById('timeUnit').addEventListener('change', function(e) {
+            const selectedUnit = e.target.value;
+            updateChart(selectedUnit);
+        });
+    </script>
+</body>
+</html>

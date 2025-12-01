@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>按年份聚合的交易日数据</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .flash-message {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        .count-link {
+            color: #2196F3;
+            text-decoration: none;
+        }
+        .count-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>按年份聚合的交易日数据</h1>
+        
+        <!-- 显示flash消息 -->
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <!-- 按年份聚合的交易日数据表格 -->
+        <table>
+            <thead>
+                <tr>
+                    <th>年份</th>
+                    <th>交易日数量</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in yearly_data %}
+                <tr>
+                    <td>{{ item.year }}</td>
+                    <td><a href="{{ url_for('trade_dates_by_year', year=item.year) }}" class="count-link">{{ item.count }}</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if not yearly_data %}
+            <p style="text-align: center; margin-top: 20px; color: #777;">暂无交易日数据。</p>
+        {% endif %}
+    </div>
+</body>
+</html>

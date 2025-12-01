@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ year }}年交易日数据</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .flash-message {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        .back-link {
+            display: inline-block;
+            background-color: #555;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .back-link:hover {
+            background-color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ year }}年交易日数据</h1>
+        
+        <!-- 返回链接 -->
+        <a href="{{ url_for('trade_dates_yearly') }}" class="back-link">返回按年份聚合页面</a>
+        
+        <!-- 显示flash消息 -->
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <!-- 特定年份的交易日数据表格 -->
+        <table>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>是否交易日</th>
+                    <th>创建时间</th>
+                    <th>更新时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trade_date in trade_dates %}
+                <tr>
+                    <td>{{ trade_date.calendar_date }}</td>
+                    <td>{{ '是' if trade_date.is_trading_day else '否' }}</td>
+                    <td>{{ trade_date.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    <td>{{ trade_date.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if not trade_dates %}
+            <p style="text-align: center; margin-top: 20px; color: #777;">暂无{{ year }}年的交易日数据。</p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ stock_code }} - {{ stock_name }} 日K数据</title>
+    <!-- 添加Chart.js和moment.js库 -->
+    <!-- 确保正确的加载顺序：Chart.js -> Moment.js -> 适配器 -> 插件 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0/dist/chartjs-adapter-moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    
+<!-- Chart.js 配置 -->
+<script>
+    // 简单直接的资源加载检查
+
+    
+    // 创建一个简单的资源加载状态对象
+    window.resourceStatus = {
+        chartjs: {
+            loaded: false,
+            version: null,
+            loadedTime: null
+        },
+        moment: {
+            loaded: false,
+            version: null,
+            loadedTime: null
+        },
+        plugins: {
+            zoom: false,
+            adapter: false
+        },
+        loadStartTime: Date.now()
+    };
+    
+    // 添加直接的内联检查函数
+    function checkChartJsDirectly() {
+        const currentTime = Date.now() - window.resourceStatus.loadStartTime;
+        
+        // 检查Chart.js
+        if (typeof Chart !== 'undefined' && !window.resourceStatus.chartjs.loaded) {
+            window.resourceStatus.chartjs.loaded = true;
+            window.resourceStatus.chartjs.version = Chart.version || '未知版本';
+            window.resourceStatus.chartjs.loadedTime = currentTime;
+
+            
+            // 检查缩放插件
+            try {
+                const hasZoom = (Chart.defaults && Chart.defaults.plugins && Chart.defaults.plugins.zoom) ||
+                              (Chart.plugins && typeof Chart.plugins.getAll === 'function' && 
+                               Chart.plugins.getAll().some(p => p.id === 'zoom'));
+                window.resourceStatus.plugins.zoom = hasZoom;
+
+            } catch (e) {
+
+            }
+            
+            // 检查日期适配器
+            try {
+                const hasAdapter = (Chart._adapters && Chart._adapters.date) || 
+                                  (Chart.adapters && Chart.adapters.date);
+                window.resourceStatus.plugins.adapter = hasAdapter;
+
+            } catch (e) {
+
+            }
+        }
+        
+        // 检查Moment.js
+        if (typeof moment !== 'undefined' && !window.resourceStatus.moment.loaded) {
+            window.resourceStatus.moment.loaded = true;
+            window.resourceStatus.moment.version = moment.version || '未知版本';
+            window.resourceStatus.moment.loadedTime = currentTime;
+
+        }
+        
+        // 打印资源状态摘要
+
+        
+        return window.resourceStatus.chartjs.loaded && window.resourceStatus.moment.loaded;
+    }
+    
+    // 立即执行一次检查
+    checkChartJsDirectly();
+    
+    // 再添加一个简单的间隔检查，确保捕获动态加载
+    let checkCount = 0;
+    const maxChecks = 10;
+    const checkInterval = setInterval(() => {
+        checkCount++;
+
+        
+        const allLoaded = checkChartJsDirectly();
+        
+        if (allLoaded || checkCount >= maxChecks) {
+            clearInterval(checkInterval);
+
+            
+            // 如果Chart.js仍未加载，显示警告
+            if (!window.resourceStatus.chartjs.loaded) {
+
+            }
+        }
+    }, 500);
+    
+    // 简化的事件监听
+    document.addEventListener('DOMContentLoaded', function() {
+    
+        checkChartJsDirectly();
+    });
+    
+    window.addEventListener('load', function() {
+        console.log('✅ 所有页面资源已加载完成');
+        checkChartJsDirectly();
+    });
+</script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #2196F3;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .back-link a {
+            color: #2196F3;
+            text-decoration: none;
+        }
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .stock-info {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f0f8ff;
+            border-radius: 5px;
+        }
+        .pagination {
+            display: none; /* 不分页 */
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        .chart-controls {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .chart-controls button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 0 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .chart-controls button:hover {
+            background-color: #0b7dda;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="stock-info">
+            <h1>{{ stock_name }} ({{ stock_code }}) 日K数据</h1>
+            <p>数据总量: {{ total_count }} 条</p>
+        </div>
+        
+        <!-- 图表容器 -->
+        <div class="chart-controls">
+            <label for="timeUnit">时间单位：</label>
+            <select id="timeUnit">
+                <option value="day">日</option>
+                <option value="week">周</option>
+                <option value="month">月</option>
+                <option value="quarter">季</option>
+            </select>
+            <button id="resetZoom">重置缩放</button>
+        </div>
+        <div class="chart-container">
+            <canvas id="klineChart"></canvas>
+        </div>
+
+        <!-- 1年PE&PS&PB分位值图表 -->
+        <div class="chart-container" style="height: 400px; width: 100%; margin: 20px 0; border: 1px solid #eee; border-radius: 4px;">
+            <h3 style="text-align: center;">1年PE&PS&PB分位值</h3>
+            <canvas id="oneYearPercentChart"></canvas>
+        </div>
+
+        <!-- 3年PE&PS&PB分位值图表 -->
+        <div class="chart-container" style="height: 400px; width: 100%; margin: 20px 0; border: 1px solid #eee; border-radius: 4px;">
+            <h3 style="text-align: center;">3年PE&PS&PB分位值</h3>
+            <canvas id="threeYearPercentChart"></canvas>
+        </div>
+
+        <!-- 5年PE&PS&PB分位值图表 -->
+        <div class="chart-container" style="height: 400px; width: 100%; margin: 20px 0; border: 1px solid #eee; border-radius: 4px;">
+            <h3 style="text-align: center;">5年PE&PS&PB分位值</h3>
+            <canvas id="fiveYearPercentChart"></canvas>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>开盘价</th>
+                        <th>最高</th>
+                        <th>最低</th>
+                        <th>收盘价</th>
+                        <th>成交量</th>
+                        <th>成交额</th>
+                        <th>复权状态</th>
+                        <th>PE/PS/PB 1年分位值</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trade in trades %}
+                    <tr>
+                        <td>{{ trade.date }}</td>
+                        <td>{{ trade.open }}</td>
+                        <td>{{ trade.high }}</td>
+                        <td>{{ trade.low }}</td>
+                        <td>{{ trade.close }}</td>
+                        <td>{{ trade.volume }}</td>
+                        <td>{{ trade.amount }}</td>
+                        <td>{{ '后复权' if trade.adjustflag == 1 else '不复权' }}</td>
+                        <td>{{ trade.pe_year_1_percent if trade.pe_year_1_percent else '-' }}-
+                            {{ trade.ps_year_1_percent if trade.ps_year_1_percent else '-' }}-
+                            {{ trade.pb_year_1_percent if trade.pb_year_1_percent else '-' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="back-link">
+            <a href="{{ url_for('nostock_basic_page') }}">返回非GP基本信息列表</a>
+        </div>
+    </div>
+
+    <script>
+        // 从页面数据中提取完整的交易数据
+        const fullTradeData = [
+            {% for trade in trades %}
+                {
+                    date: '{{ trade.date }}',
+                    low: {{ trade.low }},
+                    high: {{ trade.high }},
+                    open: {{ trade.open }},
+                    close: {{ trade.close }},
+                    volume: {{ trade.volume }},
+                    amount: {{ trade.amount }},
+                    pe_year_1_percent: {{ trade.pe_year_1_percent if trade.pe_year_1_percent is not none else '50' }},
+                    ps_year_1_percent: {{ trade.ps_year_1_percent if trade.ps_year_1_percent is not none else '50' }},
+                    pb_year_1_percent: {{ trade.pb_year_1_percent if trade.pb_year_1_percent is not none else '50' }},
+                    pe_year_3_percent: {{ trade.pe_year_3_percent if trade.pe_year_3_percent is not none else '50' }},
+                    ps_year_3_percent: {{ trade.ps_year_3_percent if trade.ps_year_3_percent is not none else '50' }},
+                    pb_year_3_percent: {{ trade.pb_year_3_percent if trade.pb_year_3_percent is not none else '50' }},
+                    pe_year_5_percent: {{ trade.pe_year_5_percent if trade.pe_year_5_percent is not none else '50' }},
+                    ps_year_5_percent: {{ trade.ps_year_5_percent if trade.ps_year_5_percent is not none else '50' }},
+                    pb_year_5_percent: {{ trade.pb_year_5_percent if trade.pb_year_5_percent is not none else '50' }},
+                }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        // 数据聚合函数
+        function aggregateData(data, unit) {
+            const aggregated = {};
+            
+            data.forEach(item => {
+                let key;
+                const date = moment(item.date);
+                
+                switch(unit) {
+                      case 'week':
+                         // 按周聚合，格式：YYYY-WW
+                         key = date.format('YYYY-[W]WW');
+                          break;
+                    case 'month':
+                        // 按月聚合，格式：YYYY-MM
+                        key = date.format('YYYY-MM');
+                        break;
+                    case 'quarter':
+                        // 按季聚合，格式：YYYY-Qn
+                        const quarter = Math.floor((date.month() + 3) / 3);
+                        key = date.format('YYYY') + '-Q' + quarter;
+                        break;
+                    case 'day':
+                    default:
+                        // 按日聚合，直接使用日期
+                        key = item.date;
+                        break;
+                }
+                
+                if (!aggregated[key]) {
+                    aggregated[key] = {
+                        date: key,
+                        // 保存每周的第一个实际日期，用于周数据的显示
+                        displayDate: unit === 'week' ? item.date : key,
+                        firstOpen: item.open,
+                        lastClose: item.close,
+                        minLow: item.low,
+                        maxHigh: item.high,
+                        totalVolume: item.volume,
+                        totalAmount: item.amount,
+                        pe_year_1_percent: item.pe_year_1_percent,
+                        ps_year_1_percent: item.ps_year_1_percent,
+                        pb_year_1_percent: item.pb_year_1_percent,
+                        pe_year_3_percent: item.pe_year_3_percent,
+                        ps_year_3_percent: item.ps_year_3_percent,
+                        pb_year_3_percent: item.pb_year_3_percent,
+                        pe_year_5_percent: item.pe_year_5_percent,
+                        ps_year_5_percent: item.ps_year_5_percent,
+                        pb_year_5_percent: item.pb_year_5_percent,
+                        count: 1
+                    };
+                } else {
+                    aggregated[key].minLow = Math.min(aggregated[key].minLow, item.low);
+                    aggregated[key].maxHigh = Math.max(aggregated[key].maxHigh, item.high);
+                    aggregated[key].totalVolume += item.volume;
+                    aggregated[key].totalAmount += item.amount;
+                    aggregated[key].lastClose = item.close;
+                    aggregated[key].count += 1;
+                }
+            });
+            
+            // 转换为数组并排序
+            const result = Object.values(aggregated).sort((a, b) => {
+                // 对于非日数据，需要特殊处理排序
+                if (unit === 'week') {
+                    return a.date.localeCompare(b.date);
+                } else if (unit === 'month') {
+                    return a.date.localeCompare(b.date);
+                } else if (unit === 'quarter') {
+                    return a.date.localeCompare(b.date);
+                }
+                return a.date.localeCompare(b.date);
+            });
+            
+            // 当时间单位为日时，仅显示最近3年的数据
+            if (unit === 'day') {
+                const threeYearsAgo = moment().subtract(3, 'years').format('YYYY-MM-DD');
+                const recentThreeYearsData = result.filter(item => item.date >= threeYearsAgo);
+                return recentThreeYearsData;
+            }
+            
+            return result;
+        }
+        
+        // 安全初始化K线图，添加详细调试日志
+        function safeInitKlineChart() {
+            console.log('=== 开始安全初始化K线图 ===');
+            const startTime = performance.now();
+            
+            // 使用新的资源状态对象检查Chart.js
+            if (!window.resourceStatus || !window.resourceStatus.chartjs || !window.resourceStatus.chartjs.loaded) {
+                console.error('❌ Chart.js未加载，无法初始化K线图', {
+                    status: window.resourceStatus ? window.resourceStatus.chartjs : '未初始化'
+                });
+                
+                // 在图表容器中显示错误信息
+                const container = document.getElementById('klineChart');
+                if (container && container.parentElement) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'chart-error';
+                    errorDiv.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: red; font-size: 14px; text-align: center;';
+                    errorDiv.textContent = '图表加载失败: Chart.js资源未就绪';
+                    container.parentElement.style.position = 'relative';
+                    container.parentElement.appendChild(errorDiv);
+                }
+                return false;
+            }
+            console.log('✅ Chart.js已加载，版本信息:', Chart.version || '未知版本');
+            
+            // 验证Chart.js功能完整性
+            try {
+                // 简化验证逻辑，只检查最基本的功能
+                // Chart.js的某些版本或加载方式可能不包含plugins但仍可创建基本图表
+                const minimalRequiredProperties = ['defaults'];
+                let isFunctional = true;
+                
+                minimalRequiredProperties.forEach(prop => {
+                    if (!(prop in Chart)) {
+                        console.warn(`⚠️ Chart.js可能不完整: 缺少${prop}`);
+                        // 不再直接返回false，而是继续尝试
+                    }
+                });
+                
+                // 检查是否能访问构造函数
+                if (typeof Chart !== 'function') {
+                    console.error('❌ Chart.js无法访问构造函数');
+                    return false;
+                }
+                
+                console.log('✅ Chart.js基本功能验证通过');
+            } catch (e) {
+                console.error('❌ 验证Chart.js完整性时出错:', e);
+                // 即使验证出错也继续尝试，使用简化配置
+                console.warn('⚠️ 将使用简化配置继续尝试');
+            }
+            
+            // 检查图表容器
+            const ctx = document.getElementById('klineChart');
+            if (!ctx) {
+                console.error('❌ K线图容器不存在');
+                return false;
+            }
+            console.log('✅ K线图容器存在，获取上下文');
+            
+            // 移除可能存在的错误提示
+            const existingError = ctx.parentElement.querySelector('.chart-error');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            // 检查数据
+            if (!fullTradeData || fullTradeData.length === 0) {
+                console.error('❌ 没有交易数据，无法初始化图表');
+                return false;
+            }
+            console.log('✅ 交易数据存在，长度:', fullTradeData.length);
+            
+            try {
+                // 初始化前销毁可能存在的图表
+                if (window.klineChart) {
+                    console.log('🔄 销毁现有图表实例...');
+                    try {
+                        // 安全地销毁图表实例
+                        if (window.klineChart && typeof window.klineChart.destroy === 'function') {
+                            window.klineChart.destroy();
+                        } else {
+                            console.warn('⚠️ 图表实例不包含destroy方法，直接重置');
+                        }
+                    } catch (destroyError) {
+                        console.error('⚠️ 销毁图表实例时出错:', destroyError);
+                    } finally {
+                        // 无论如何都重置实例
+                        window.klineChart = null;
+                    }
+                }
+                
+                // 初始化时使用日数据
+                const initialData = aggregateData(fullTradeData, 'day');
+                console.log('📊 K线图初始数据长度:', initialData.length);
+                
+                // 检查数据质量
+                if (initialData.length === 0) {
+                    console.error('❌ 聚合后的数据为空');
+                    return false;
+                }
+                console.log('📈 数据样本检查:', {
+                    firstItem: initialData[0],
+                    lastItem: initialData[initialData.length - 1]
+                });
+                
+                // 对于周数据，使用displayDate字段显示第一个数据的日期
+                const labels = initialData.map(item => item.displayDate || item.date);
+                
+                // 优化数据处理，确保折线图显示正常
+                // 保留原始精度，不进行四舍五入
+                const highData = initialData.map(item => item.maxHigh);
+                
+                // 优化高低差价计算，使用适当的系数，保持原始精度
+                const DIFF_COEFFICIENT = 3; // 降低系数以确保折线更接近
+                const highLowDiffData = initialData.map(item => (item.maxHigh - item.minLow) * DIFF_COEFFICIENT);
+                
+                // 成交额数据处理
+                const amountData = initialData.map(item => parseFloat((item.totalAmount / 100000000).toFixed(2)));
+                
+                console.log('📊 图表数据准备完成:', {
+                    labelsCount: labels.length,
+                    highDataRange: {
+                        min: Math.min(...highData),
+                        max: Math.max(...highData)
+                    },
+                    diffDataRange: {
+                        min: Math.min(...highLowDiffData),
+                        max: Math.max(...highLowDiffData)
+                    }
+                });
+                
+                // 创建图表实例 - 使用优化的配置
+                console.log('🔄 开始创建Chart.js实例...');
+                
+                window.klineChart = new Chart(ctx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                        {
+                            label: '最高价',
+                            data: highData,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            borderWidth: 2, // 增加线条宽度，提高可见性
+                            fill: false,
+                            tension: 0.1,
+                            yAxisID: 'y',
+                            pointRadius: 0.5, // 添加小数据点，提高可见性
+                            pointHoverRadius: 4
+                        },
+                        {
+                            label: '高低差价',
+                            data: highLowDiffData,
+                            borderColor: 'rgb(255, 99, 132)', // 使用更明显的颜色
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            borderWidth: 2, // 增加线条宽度
+                            fill: false,
+                            tension: 0.1,
+                            yAxisID: 'y',
+                            pointRadius: 0.5,
+                            pointHoverRadius: 4
+                        },
+                        {
+                            label: '成交额(亿)',
+                            data: amountData,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            borderWidth: 1,
+                            fill: true,
+                            type: 'bar',
+                            yAxisID: 'y1'
+                        }
+                    ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            duration: 1000 // 添加动画效果
+                        },
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        stacked: false,
+                        scales: {
+                            x: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: '日期'
+                                },
+                                ticks: {
+                                    autoSkip: true,
+                                    maxTicksLimit: 10,
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                },
+                                reverse: false // 不反转时间轴顺序
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: '价格'
+                                },
+                                min: function(context) {
+                                    // 动态设置Y轴最小值，确保折线图完整显示
+                                    const chart = context.chart;
+                                    let min = Infinity;
+                                    chart.data.datasets.forEach(dataset => {
+                                        if (dataset.yAxisID === 'y') {
+                                            const datasetMin = Math.min(...dataset.data);
+                                            min = Math.min(min, datasetMin);
+                                        }
+                                    });
+                                    return min * 0.9; // 留出10%的边距
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: '成交额(亿)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                }
+                            },
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 20
+                                }
+                            },
+                            tooltip: {
+                                enabled: true,
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleFont: {
+                                    size: 14
+                                },
+                                bodyFont: {
+                                    size: 13
+                                }
+                            },
+                            zoom: {
+                                pan: {
+                                    enabled: true,
+                                    mode: 'x'
+                                },
+                                zoom: {
+                                    wheel: {
+                                        enabled: true,
+                                    },
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    mode: 'x',
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // 验证图表实例创建成功
+                console.log('✅ K线图实例创建成功:', {
+                    chartType: window.klineChart?.config?.type,
+                    datasetsCount: window.klineChart?.data?.datasets?.length,
+                    labelsCount: window.klineChart?.data?.labels?.length
+                });
+                
+                // 尝试手动触发图表更新
+                if (window.klineChart) {
+                    console.log('🔄 手动触发图表更新...');
+                    window.klineChart.update();
+                }
+                
+                const endTime = performance.now();
+                console.log(`✅ K线图安全初始化完成，耗时: ${(endTime - startTime).toFixed(2)}ms`);
+                return true;
+            } catch (error) {
+                console.error('❌ K线图初始化过程中发生错误:', {
+                    message: error.message,
+                    name: error.name,
+                    stack: error.stack
+                });
+                
+                // 在图表容器中显示错误信息
+                if (ctx && ctx.parentElement) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'chart-error';
+                    errorDiv.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: red; font-size: 14px; text-align: center; padding: 10px; background: rgba(255, 255, 255, 0.9); border-radius: 4px;';
+                    errorDiv.textContent = `图表加载失败: ${error.message || '未知错误'}`;
+                    ctx.parentElement.style.position = 'relative';
+                    ctx.parentElement.appendChild(errorDiv);
+                }
+                
+                // 尝试使用极度简化的配置重试
+                try {
+
+                    
+                    // 获取初始数据
+                    const initialData = aggregateData(fullTradeData, 'day');
+                    if (initialData.length === 0) return false;
+                    
+                    // 简化配置 - 仅包含最基本功能
+                    const simplifiedConfig = {
+                        type: 'line',
+                        data: {
+                            labels: initialData.slice(0, 100).map(item => item.displayDate || item.date),
+                            datasets: [{
+                                label: '股价',
+                                data: initialData.slice(0, 100).map(item => item.maxHigh || parseFloat(item.high)),
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: true },
+                                tooltip: { enabled: true }
+                            }
+                        }
+                    };
+                    
+                    // 销毁可能创建了一半的实例
+                    if (window.klineChart) {
+                        try {
+                            window.klineChart.destroy();
+                        } catch (e) {}
+                        window.klineChart = null;
+                    }
+                    
+                    window.klineChart = new Chart(ctx.getContext('2d'), simplifiedConfig);
+
+                    return true;
+                } catch (simplifiedError) {
+    
+                }
+                
+                return false;
+            }
+        }
+        
+        // 更新图表数据
+        function updateChart(unit) {
+            const aggregatedData = aggregateData(fullTradeData, unit);
+            
+            // 准备图表数据
+            // 对于周数据，使用displayDate字段显示第一个数据的日期
+            const labels = aggregatedData.map(item => item.displayDate || item.date);
+            // 去掉最高的小数点
+            const highData = aggregatedData.map(item => Math.round(item.maxHigh));
+            // 根据时间单位选择不同的系数，使高低差价折线与最高折线距离更接近
+            let DIFF_COEFFICIENT = 5; // 日数据的默认系数
+            if (unit === 'week') {
+                DIFF_COEFFICIENT = 8; // 周数据的系数，使距离更接近
+            } else if (unit === 'month') {
+                DIFF_COEFFICIENT = 15; // 月数据的系数，使距离更接近
+            } else if (unit === 'quarter') {
+                DIFF_COEFFICIENT = 25; // 季数据的系数，使距离更接近
+            }
+            
+            // 计算高低差价并应用系数
+            const highLowDiffData = aggregatedData.map(item => Math.round((item.maxHigh - item.minLow) * DIFF_COEFFICIENT / item.count));
+            // 将成交额转换为以亿为单位
+            const amountData = aggregatedData.map(item => parseFloat((item.totalAmount / 100000000).toFixed(2)));
+            
+            // 使用全局的klineChart对象
+            if (window.klineChart) {
+                window.klineChart.data.labels = labels;
+                window.klineChart.data.datasets[0].data = highData;
+                window.klineChart.data.datasets[1].data = highLowDiffData;
+                window.klineChart.data.datasets[2].data = amountData;
+                
+                // 更新图表标题
+                let title = '日K数据';
+                switch(unit) {
+                    case 'week':
+                        title = '周K数据';
+                        break;
+                    case 'month':
+                        title = '月K数据';
+                        break;
+                    case 'quarter':
+                        title = '季K数据';
+                        break;
+                }
+                document.querySelector('.stock-info h1').textContent = 
+                    '{{ stock_name }} ({{ stock_code }}) ' + title;
+                
+                // 确保时间轴从左到右为从远到近的日期
+                window.klineChart.options.scales.x.reverse = false;
+                
+                window.klineChart.update();
+            } else {
+    
+            }
+        }
+
+        // 重置缩放按钮事件
+        document.getElementById('resetZoom').addEventListener('click', function() {
+            if (window.klineChart) {
+                window.klineChart.resetZoom();
+            }
+            if (window.oneYearPercentChart) {
+                window.oneYearPercentChart.resetZoom();
+            }
+            if (window.threeYearPercentChart) {
+                window.threeYearPercentChart.resetZoom();
+            }
+            if (window.fiveYearPercentChart) {
+                window.fiveYearPercentChart.resetZoom();
+            }
+        });
+        
+        // 时间单位选择器事件
+        document.getElementById('timeUnit').addEventListener('change', function(e) {
+            const selectedUnit = e.target.value;
+            updateChart(selectedUnit);
+            updatePercentCharts(selectedUnit);
+        });
+
+        // 初始化分位值图表
+        function initPercentCharts() {
+
+            // 准备初始数据
+            const initialData = aggregateData(fullTradeData, 'day');
+            const labels = initialData.map(item => item.displayDate || item.date);
+
+
+
+            // 准备各类型数据
+            const peData = preparePercentDataset(initialData, 'pe');
+            const psData = preparePercentDataset(initialData, 'ps');
+            const pbData = preparePercentDataset(initialData, 'pb');
+
+
+
+
+            // 初始化1年PE&PS&PB分位值图表
+            const oneYearCtx = document.getElementById('oneYearPercentChart').getContext('2d');
+            
+            window.oneYearPercentChart = new Chart(oneYearCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'PE分位值',
+                            data: peData.year1,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'PS分位值',
+                            data: psData.year1,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'PB分位值',
+                            data: pbData.year1,
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: '分位值(%)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '日期'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 初始化3年PE&PS&PB分位值图表
+            const threeYearCtx = document.getElementById('threeYearPercentChart').getContext('2d');
+            
+            window.threeYearPercentChart = new Chart(threeYearCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'PE分位值',
+                            data: peData.year3,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'PS分位值',
+                            data: psData.year3,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'PB分位值',
+                            data: pbData.year3,
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: '分位值(%)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '日期'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 初始化5年PE&PS&PB分位值图表
+            const fiveYearCtx = document.getElementById('fiveYearPercentChart').getContext('2d');
+            
+            window.fiveYearPercentChart = new Chart(fiveYearCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'PE分位值',
+                            data: peData.year5,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'PS分位值',
+                            data: psData.year5,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'PB分位值',
+                            data: pbData.year5,
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: '分位值(%)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '日期'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 准备分位值数据集
+        function preparePercentDataset(data, type) {
+            console.log(`准备${type}分位值数据集...`);
+            const year1 = [];
+            const year3 = [];
+            const year5 = [];
+
+            data.forEach(item => {
+                // 使用默认值50替代null，与HTML模板中的默认值保持一致
+                const y1 = item[`${type}_year_1_percent`] !== null && item[`${type}_year_1_percent`] !== undefined ? item[`${type}_year_1_percent`] : 50;
+                const y3 = item[`${type}_year_3_percent`] !== null && item[`${type}_year_3_percent`] !== undefined ? item[`${type}_year_3_percent`] : 50;
+                const y5 = item[`${type}_year_5_percent`] !== null && item[`${type}_year_5_percent`] !== undefined ? item[`${type}_year_5_percent`] : 50;
+                
+                year1.push(y1);
+                year3.push(y3);
+                year5.push(y5);
+                
+                // 记录第一个数据项的详细信息
+                if (year1.length === 1) {
+                    console.log(`${type}数据字段检查:`, {
+                        y1: y1,
+                        y3: y3,
+                        y5: y5,
+                        hasYear1Percent: `${type}_year_1_percent` in item,
+                        hasYear3Percent: `${type}_year_3_percent` in item,
+                        hasYear5Percent: `${type}_year_5_percent` in item
+                    });
+                }
+            });
+            
+            const result = { year1, year3, year5 };
+            console.log(`${type}分位值数据集准备完成:`, {
+                year1Length: year1.length,
+                year1Sample: year1.slice(0, 3),
+                year3Sample: year3.slice(0, 3),
+                year5Sample: year5.slice(0, 3)
+            });
+            
+            return result;
+        }
+
+        // 获取分位值图表选项
+        function getPercentChartOptions() {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: '日期'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 10
+                        },
+                        reverse: false
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: '分位值(%)'
+                        },
+                        min: 0,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y + '%';
+                            }
+                        }
+                    },
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'x'
+                        },
+                        zoom: {
+                            wheel: {
+                                enabled: true,
+                            },
+                            pinch: {
+                                enabled: true
+                            },
+                            mode: 'x',
+                        }
+                    }
+                }
+            };
+        }
+
+        // 更新分位值图表
+        function updatePercentCharts(unit) {
+            const aggregatedData = aggregateData(fullTradeData, unit);
+            const labels = aggregatedData.map(item => item.displayDate || item.date);
+            
+            // 准备各类型数据
+            const peData = preparePercentDataset(aggregatedData, 'pe');
+            const psData = preparePercentDataset(aggregatedData, 'ps');
+            const pbData = preparePercentDataset(aggregatedData, 'pb');
+            
+            // 更新1年分位值图表
+            if (window.oneYearPercentChart) {
+                window.oneYearPercentChart.data.labels = labels;
+                window.oneYearPercentChart.data.datasets[0].data = peData.year1;
+                window.oneYearPercentChart.data.datasets[1].data = psData.year1;
+                window.oneYearPercentChart.data.datasets[2].data = pbData.year1;
+                window.oneYearPercentChart.update();
+            }
+            
+            // 更新3年分位值图表
+            if (window.threeYearPercentChart) {
+                window.threeYearPercentChart.data.labels = labels;
+                window.threeYearPercentChart.data.datasets[0].data = peData.year3;
+                window.threeYearPercentChart.data.datasets[1].data = psData.year3;
+                window.threeYearPercentChart.data.datasets[2].data = pbData.year3;
+                window.threeYearPercentChart.update();
+            }
+            
+            // 更新5年分位值图表
+            if (window.fiveYearPercentChart) {
+                window.fiveYearPercentChart.data.labels = labels;
+                window.fiveYearPercentChart.data.datasets[0].data = peData.year5;
+                window.fiveYearPercentChart.data.datasets[1].data = psData.year5;
+                window.fiveYearPercentChart.data.datasets[2].data = pbData.year5;
+                window.fiveYearPercentChart.update();
+            }
+        }
+
+        // 优化图表初始化函数，添加详细调试日志
+        function safeInitPercentCharts() {
+            console.log('=== 开始安全初始化分位值图表 ===');
+            const startTime = performance.now();
+            
+            // 使用新的资源状态对象检查Chart.js
+            if (!window.resourceStatus || !window.resourceStatus.chartjs || !window.resourceStatus.chartjs.loaded) {
+                console.error('❌ Chart.js未加载，无法初始化分位值图表', {
+                    status: window.resourceStatus ? window.resourceStatus.chartjs : '未初始化'
+                });
+                
+                // 在图表容器中显示错误信息
+                const containers = ['oneYearPercentChart', 'threeYearPercentChart', 'fiveYearPercentChart'];
+                containers.forEach(id => {
+                    const container = document.getElementById(id);
+                    if (container && container.parentElement) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'chart-error';
+                        errorDiv.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: red; font-size: 14px; text-align: center;';
+                        errorDiv.textContent = '图表加载失败: Chart.js资源未就绪';
+                        container.parentElement.style.position = 'relative';
+                        container.parentElement.appendChild(errorDiv);
+                    }
+                });
+                return false;
+            }
+            console.log('✅ Chart.js已加载，版本信息:', Chart.version || '未知版本');
+            console.log('✅ Chart对象属性检查:', {
+                plugins: typeof Chart.plugins === 'object' ? Object.keys(Chart.plugins) : '不存在',
+                defaults: typeof Chart.defaults === 'object' ? Object.keys(Chart.defaults).slice(0, 5) + '...' : '不存在',
+                register: typeof Chart.register === 'function',
+                unregister: typeof Chart.unregister === 'function'
+            });
+            
+            // 检查图表容器
+            const containers = [
+                { id: 'oneYearPercentChart', name: '1年分位值图表' },
+                { id: 'threeYearPercentChart', name: '3年分位值图表' },
+                { id: 'fiveYearPercentChart', name: '5年分位值图表' }
+            ];
+            
+            let allContainersExist = true;
+            const containerStatus = {};
+            
+            containers.forEach(container => {
+                const element = document.getElementById(container.id);
+                containerStatus[container.name] = {
+                    exists: !!element,
+                    width: element ? element.offsetWidth : 0,
+                    height: element ? element.offsetHeight : 0
+                };
+                
+                if (!element) {
+                    console.error(`❌ ${container.name}容器不存在`);
+                    allContainersExist = false;
+                } else {
+                    console.log(`✅ ${container.name}容器存在，尺寸: ${element.offsetWidth}x${element.offsetHeight}`);
+                }
+            });
+            
+            console.log('图表容器状态汇总:', containerStatus);
+            
+            if (!allContainersExist) {
+                console.error('❌ 部分图表容器不存在，无法初始化');
+                return false;
+            }
+            
+            // 检查数据
+            console.log('数据检查:', {
+                fullTradeData: !!fullTradeData,
+                dataType: typeof fullTradeData,
+                dataLength: fullTradeData ? fullTradeData.length : 0
+            });
+            
+            if (!fullTradeData || fullTradeData.length === 0) {
+                console.error('❌ 没有交易数据，无法初始化图表');
+                return false;
+            }
+            
+            // 检查辅助函数
+            console.log('辅助函数检查:', {
+                initPercentCharts: typeof initPercentCharts === 'function',
+                preparePercentDataset: typeof preparePercentDataset === 'function',
+                getPercentChartOptions: typeof getPercentChartOptions === 'function',
+                aggregateData: typeof aggregateData === 'function'
+            });
+            
+            try {
+                // 执行初始化
+                console.log('🔄 开始执行initPercentCharts()...');
+                initPercentCharts();
+                
+                // 验证图表实例
+                const chartInstances = {
+                    oneYearPercentChart: !!window.oneYearPercentChart,
+                    threeYearPercentChart: !!window.threeYearPercentChart,
+                    fiveYearPercentChart: !!window.fiveYearPercentChart
+                };
+                
+                console.log('图表实例创建状态:', chartInstances);
+                
+                const allChartsCreated = Object.values(chartInstances).every(Boolean);
+                
+                const endTime = performance.now();
+                console.log(`✅ 分位值图表安全初始化${allChartsCreated ? '成功' : '部分成功'}，耗时: ${(endTime - startTime).toFixed(2)}ms`);
+                
+                return allChartsCreated;
+            } catch (error) {
+                console.error('❌ 图表初始化过程中发生错误:', {
+                    message: error.message,
+                    name: error.name,
+                    stack: error.stack
+                });
+                
+                // 在所有图表容器中显示错误信息
+                const containers = ['oneYearPercentChart', 'threeYearPercentChart', 'fiveYearPercentChart'];
+                containers.forEach(id => {
+                    const container = document.getElementById(id);
+                    if (container && container.parentElement) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'chart-error';
+                        errorDiv.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: red; font-size: 14px; text-align: center; padding: 10px; background: rgba(255, 255, 255, 0.9); border-radius: 4px;';
+                        errorDiv.textContent = `分位值图表加载失败: ${error.message || '未知错误'}`;
+                        container.parentElement.style.position = 'relative';
+                        container.parentElement.appendChild(errorDiv);
+                    }
+                });
+                
+                // 尝试使用简化配置为1年分位值图表创建基本显示
+                try {
+                    console.log('🔄 尝试使用简化配置创建基本分位值图表');
+                    
+                    // 为1年图表创建最基本的显示
+                    const oneYearCtx = document.getElementById('oneYearPercentChart');
+                    if (oneYearCtx) {
+                        // 简化配置
+                        const simplifiedConfig = {
+                            type: 'bar',
+                            data: {
+                                labels: ['PE分位', 'PS分位', 'PB分位'],
+                                datasets: [{
+                                    label: '1年分位值',
+                                    data: [50, 50, 50], // 默认值
+                                    backgroundColor: [
+                                        'rgba(255, 99, 132, 0.7)',
+                                        'rgba(54, 162, 235, 0.7)',
+                                        'rgba(75, 192, 192, 0.7)'
+                                    ],
+                                    borderColor: [
+                                        'rgba(255, 99, 132, 1)',
+                                        'rgba(54, 162, 235, 1)',
+                                        'rgba(75, 192, 192, 1)'
+                                    ],
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100,
+                                        ticks: {
+                                            callback: function(value) {
+                                                return value + '%';
+                                            }
+                                        }
+                                    }
+                                },
+                                plugins: {
+                                    legend: { display: true },
+                                    tooltip: { enabled: true }
+                                }
+                            }
+                        };
+                        
+                        window.oneYearPercentChart = new Chart(oneYearCtx.getContext('2d'), simplifiedConfig);
+
+                    }
+                } catch (simplifiedError) {
+
+                }
+                
+                return false;
+            }
+        }
+        
+        // 增强版图表初始化管理系统
+        function setupChartInitialization() {
+
+            let retryCount = 0;
+            const maxRetries = 15; // 增加重试次数到15次
+            const retryDelay = 1000; // 每次重试间隔1秒
+            let klineInitialized = false;
+            let percentInitialized = false;
+            
+            // 添加全局加载状态变量
+            window.chartInitializationState = {
+                chartjsLoaded: false,
+                chartjsVersion: null,
+                momentLoaded: false,
+                momentVersion: null,
+                klineChart: null,
+                percentCharts: {},
+                initializationStartTime: Date.now(),
+                initializationComplete: false
+            };
+            
+            // 增强的资源检查函数
+            function checkResources() {
+                const chartjsStatus = typeof Chart !== 'undefined';
+                const momentStatus = typeof moment !== 'undefined';
+                const dataStatus = typeof fullTradeData !== 'undefined' && fullTradeData && fullTradeData.length > 0;
+                
+                // 更新全局状态
+                window.chartInitializationState.chartjsLoaded = chartjsStatus;
+                window.chartInitializationState.chartjsVersion = chartjsStatus ? (Chart.version || '未知版本') : null;
+                window.chartInitializationState.momentLoaded = momentStatus;
+                window.chartInitializationState.momentVersion = momentStatus ? (moment.version || '未知版本') : null;
+                
+                const status = {
+                    chartjs: chartjsStatus,
+                    chartjsVersion: window.chartInitializationState.chartjsVersion,
+                    moment: momentStatus,
+                    momentVersion: window.chartInitializationState.momentVersion,
+                    data: dataStatus,
+                    dom: document.readyState === 'complete' || document.readyState === 'interactive'
+                };
+                
+
+                return status;
+            }
+            
+            // 增强的错误显示函数
+            function showChartErrorMessage(message) {
+                
+                // 为每个图表容器添加错误消息
+                const chartContainers = [
+                    '#klineChartContainer',
+                    '#oneYearPercentContainer',
+                    '#threeYearPercentContainer',
+                    '#fiveYearPercentContainer'
+                ];
+                
+                chartContainers.forEach(selector => {
+                    const container = document.querySelector(selector);
+                    if (container) {
+                        container.innerHTML = `
+                            <div style="display: flex; justify-content: center; align-items: center;
+                                        height: 100%; min-height: 200px; color: #dc3545;">
+                                <div>
+                                    <h4>图表加载失败</h4>
+                                    <p>${message}</p>
+                                    <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                        刷新页面重试
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+            }
+            
+            // 核心初始化尝试函数
+            function tryInitializeCharts() {
+                retryCount++;
+
+                
+                // 检查资源状态
+                const resources = checkResources();
+                
+                // 只有当核心资源可用时才尝试初始化
+                if (resources.chartjs && resources.moment && resources.data && resources.dom) {
+
+                    
+                    try {
+                        // 初始化K线图
+                        if (!klineInitialized) {
+
+                            klineInitialized = safeInitKlineChart();
+                            window.chartInitializationState.klineChart = window.klineChart || null;
+
+                        }
+                        
+                        // 初始化分位值图表
+                        if (!percentInitialized) {
+
+                            percentInitialized = safeInitPercentCharts();
+                            window.chartInitializationState.percentCharts = {
+                                oneYear: window.oneYearPercentChart || null,
+                                threeYear: window.threeYearPercentChart || null,
+                                fiveYear: window.fiveYearPercentChart || null
+                            };
+
+                        }
+                        
+                        // 如果所有图表都初始化成功
+                        if (klineInitialized && percentInitialized) {
+
+                            window.chartInitializationState.initializationComplete = true;
+                            return true;
+                        }
+                    } catch (e) {
+
+                    }
+                }
+                
+                // 如果尚未成功且未达到最大重试次数，继续重试
+                if (retryCount < maxRetries) {
+                    let missingResources = [];
+                    if (!resources.chartjs) missingResources.push('Chart.js');
+                    if (!resources.moment) missingResources.push('Moment.js');
+                    if (!resources.data) missingResources.push('交易数据');
+                    if (!resources.dom) missingResources.push('DOM就绪');
+                    
+
+                    setTimeout(tryInitializeCharts, retryDelay);
+                } else {
+                    // 达到最大重试次数，显示错误信息
+
+                    showChartErrorMessage('图表资源加载失败，请刷新页面重试');
+                }
+                
+                return false;
+            }
+            
+            // 添加Chart.js动态检测
+            function setupChartJsDynamicDetection() {
+                // 如果Chart.js已经加载
+                if (typeof Chart !== 'undefined') {
+
+                    tryInitializeCharts();
+                    return;
+                }
+                
+                // 如果Chart.js未加载，设置动态检测
+                
+                const detectionInterval = setInterval(() => {
+                    if (typeof Chart !== 'undefined') {
+                        clearInterval(detectionInterval);
+
+                        tryInitializeCharts();
+                    } else if (retryCount >= maxRetries) {
+                        clearInterval(detectionInterval);
+
+                    }
+                }, 500); // 每500ms检查一次
+            }
+            
+            // 开始初始化流程
+            setupChartJsDynamicDetection();
+        }
+        
+        // 在DOM加载完成后设置图表初始化
+        document.addEventListener('DOMContentLoaded', function() {
+
+            setupChartInitialization();
+        });
+        
+        // 也监听窗口load事件，确保所有资源都已加载
+        window.addEventListener('load', function() {
+
+            // 如果图表还未初始化，尝试初始化
+            if (!window.klineChart || !window.oneYearPercentChart) {
+
+                setTimeout(setupChartInitialization, 500);
+            }
+        });
+    </script>
+</body>
+</html>

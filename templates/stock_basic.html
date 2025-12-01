@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        /* 表格样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        /* 分页样式 */
+        .pagination {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .pagination a {
+            margin: 0 5px;
+            padding: 5px 10px;
+            text-decoration: none;
+            border: 1px solid #ddd;
+            color: #333;
+            border-radius: 3px;
+        }
+        .pagination a.active {
+            background-color: #4CAF50;
+            color: white;
+            border: 1px solid #4CAF50;
+        }
+        
+        /* 标签样式 */
+        .tag {
+            display: inline-block;
+            padding: 3px 8px;
+            margin: 2px;
+            border-radius: 3px;
+            font-size: 12px;
+            background-color: #e7f3fe;
+            color: #31708f;
+        }
+        
+        /* 搜索表单样式 */
+        .search-form {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .search-form input, .search-form select {
+            margin-right: 10px;
+            padding: 5px;
+        }
+        .search-form button {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        /* 返回首页链接样式 */
+        .back-link {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .back-link a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        
+        /* 排序图标样式 */
+        .sort-icon {
+            font-size: 12px;
+            margin-left: 5px;
+            transition: transform 0.2s;
+        }
+        .sort-asc {
+            transform: rotate(-180deg);
+        }
+        .sort-desc {
+            transform: rotate(0deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 查询表单 -->
+        <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 8px;">
+            <form id="search-form" method="get" action="/stock_basic">
+                证券名称：
+                <input type="text" id="code_name" name="code_name" placeholder="输入证券名称" value="{{ request.args.get('code_name', '') }}" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                证券代码：
+                <input type="text" id="code" name="code" placeholder="输入证券代码" value="{{ request.args.get('code', '') }}" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                行业：
+                <input type="text" id="industry" name="industry" placeholder="输入行业" value="{{ request.args.get('industry', '') }}" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                上市状态：
+                <select id="status" name="status" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                    <option value="" {{ 'selected' if request.args.get('status', '0') == '' else '' }}>全部</option>
+                    <option value="1" {{ 'selected' if request.args.get('status', '1') == '1' else '' }}>上市</option>
+                    <option value="0" {{ 'selected' if request.args.get('status', '') == '0' else '' }}>退市</option>
+                </select>
+                <br/>标签：
+                    <input type="checkbox" name="tag" value="重点" {{ 'checked' if '重点' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">重点
+                    <input type="checkbox" name="tag" value="观察" {{ 'checked' if '观察' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">观察
+                    <input type="checkbox" name="tag" value="垄断" {{ 'checked' if '垄断' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">垄断
+                    <input type="checkbox" name="tag" value="半垄断" {{ 'checked' if '半垄断' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">半垄断
+                    <input type="checkbox" name="tag" value="量化" {{ 'checked' if '量化' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">量化
+                    <input type="checkbox" name="tag" value="不看" {{ 'checked' if '不看' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">不看
+                    <input type="checkbox" name="tag" value="_BLANK_" {{ 'checked' if '_BLANK_' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">空白
+
+                    ---------排除：<input type="checkbox" name="bukan" value="1" {{ 'checked' if request.args.get('bukan') == '1' else '' }} style="margin-right: 5px;">不看
+                    ---------<input type="checkbox" name="ana_type" value="1" {{ 'checked' if request.args.get('ana_type') == '1' else '' }} style="margin-right: 5px;">看统计页面
+                <br/>自动标签：
+                    <input type="checkbox" name="auto_tag" value="15成长" {{ 'checked' if '15成长' in (request.args.getlist('auto_tag')|default([])) else '' }} style="margin-right: 5px;">15成长
+                    <input type="checkbox" name="auto_tag" value="5成长大股" {{ 'checked' if '5成长大股' in (request.args.getlist('auto_tag')|default([])) else '' }} style="margin-right: 5px;">5成长大股
+                    <input type="checkbox" name="auto_tag" value="3股息" {{ 'checked' if '3股息' in (request.args.getlist('auto_tag')|default([])) else '' }} style="margin-right: 5px;">3股息
+                    <input type="checkbox" name="auto_tag" value="1股息5成长" {{ 'checked' if '1股息5成长' in (request.args.getlist('auto_tag')|default([])) else '' }} style="margin-right: 5px;">1股息5成长
+                    <input type="checkbox" name="auto_tag" value="_BLANK_" {{ 'checked' if '_BLANK_' in (request.args.getlist('auto_tag')|default([])) else '' }} style="margin-right: 5px;">空白
+                <BR/>自动标签数：
+                    <input type="text" id="auto_tags_count" name="auto_tags_count" placeholder="输入自动标签数" value="{{ request.args.get('auto_tags_count', '') }}" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                    <button type="submit" style="background-color: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">查询</button>
+                <button type="button" onclick="resetSearch()" style="background-color: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-left: 10px;">重置</button>
+            </form>
+        </div>
+
+        <!-- 每页显示数量选择器 -->
+        <div class="page-size-selector">
+            <label for="per_page">每页显示数量：</label>
+            <select id="per_page" onchange="changePageSize()">
+                <option value="100" {{ 'selected' if per_page == 100 else '' }}>100</option>
+                <option value="200" {{ 'selected' if per_page == 200 else '' }}>200</option>
+                <option value="500" {{ 'selected' if per_page == 500 else '' }}>500</option>
+            </select>
+        </div>
+
+        <script>
+            // 重置查询表单
+            function resetSearch() {
+                document.getElementById('code_name').value = '';
+                document.getElementById('code').value = '';
+                document.getElementById('industry').value = '';
+                document.getElementById('status').value = '1';
+                document.getElementById('auto_tags_count').value = '';
+                // 重置所有标签复选框
+                const tagCheckboxes = document.querySelectorAll('input[name="tag"]');
+                tagCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                // 重置所有自动标签复选框
+                const autoTagCheckboxes = document.querySelectorAll('input[name="auto_tag"]');
+                autoTagCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                document.getElementById('search-form').submit();
+            }
+            
+            // 更改每页显示数量
+            function changePageSize() {
+                const perPage = document.getElementById('per_page').value;
+                // 创建一个新的URLSearchParams对象，包含所有当前表单参数
+                const params = new URLSearchParams();
+                params.set('per_page', perPage);
+                
+                // 添加所有表单参数
+                if (document.getElementById('code_name').value) {
+                    params.set('code_name', document.getElementById('code_name').value);
+                }
+                if (document.getElementById('code').value) {
+                    params.set('code', document.getElementById('code').value);
+                }
+                if (document.getElementById('industry').value) {
+                    params.set('industry', document.getElementById('industry').value);
+                }
+                params.set('status', document.getElementById('status').value);
+                
+                // 添加所有选中的标签
+                const tagCheckboxes = document.querySelectorAll('input[name="tag"]:checked');
+                tagCheckboxes.forEach(checkbox => {
+                    params.append('tag', checkbox.value);
+                });
+                
+                // 添加所有选中的自动标签
+                const autoTagCheckboxes = document.querySelectorAll('input[name="auto_tag"]:checked');
+                autoTagCheckboxes.forEach(checkbox => {
+                    params.append('auto_tag', checkbox.value);
+                });
+                
+                if (document.getElementById('auto_tags_count').value) {
+                    params.set('auto_tags_count', document.getElementById('auto_tags_count').value);
+                }
+                
+                // 构建新的URL并跳转
+                window.location.href = '/stock_basic?' + params.toString();
+            }
+        </script>
+        
+        <!-- 数据表格 -->
+        <table>
+            <!-- 表格列标题行 -->
+            <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th>证券</th>
+                    <th>标签</th>
+                    <th>自动标签</th>
+                    <th>备注</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+
+            <!-- 表格数据行 -->
+            <tbody id="stockTableBody">
+                {% if stock_basics %}
+                    {% for stock in stock_basics %}
+                        <tr>
+                            <td>
+                                <a href="/stock_trade/{{ stock.code }}" target="_blank">{{ stock.code_name }}-K线</a>
+                                <a href="https://quote.eastmoney.com/{{ stock.code.replace('.', '') }}.html" target="_blank">{{ stock.code }}</a> 
+                                <a href="https://xueqiu.com/S/{{ stock.code.replace('.', '') }}" target="_blank">雪球</a>
+                                <br/>
+                            {{ stock.industry if stock.industry else '-' }}<br/>
+                            {{ stock.ipo_date if stock.ipo_date else '-' }}
+                            </td>
+                            <td>
+                                {% if stock.tags %}
+                                    {% set tags_list = stock.tags %}
+                                    {% if tags_list %}
+                                        {% for tag in tags_list %}
+                                            <span style="background-color: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">{{ tag }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                        </td>
+                        <td>
+                                {% if stock.auto_tags %}
+                                    {% set auto_tags_list = stock.auto_tags %}
+                                    {% if auto_tags_list %}
+                                        {% for tag in auto_tags_list %}
+                                            <span style="background-color: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">{{ tag }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                        </td>
+                        <td>
+                            <div style="word-wrap: break-word;">
+                                {{ stock.remark if stock.remark else '-' }}<br/>
+                                风险：<span style="color: red;">{{ stock.risk_memo if stock.risk_memo else '-' }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <button onclick="editTags({{ stock.id }}, '{{ stock.code }}', '{{ stock.code_name }}')" data-tags="{{ stock.tags }}" style="background-color: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-bottom: 5px; display: block;">编辑标签</button>
+                            <button onclick="editRemark({{ stock.id }}, '{{ stock.code }}', '{{ stock.code_name }}', event)" data-remark="{{ stock.remark }}" data-risk-memo="{{ stock.risk_memo }}" style="background-color: #FF9800; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; display: block;">编辑备注</button>
+                        </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 20px;">暂无数据</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        
+        <!-- 分页导航 -->
+        {% if pagination %}
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                    <a href="?page={{ pagination.prev_num }}&per_page={{ per_page }}{% if request.args.get('code_name') %}&code_name={{ request.args.get('code_name') }}{% endif %}{% if request.args.get('code') %}&code={{ request.args.get('code') }}{% endif %}{% if request.args.get('industry') %}&industry={{ request.args.get('industry') }}{% endif %}{% if request.args.get('status') %}&status={{ request.args.get('status') }}{% endif %}{% for tag in request.args.getlist('tag') %}&tag={{ tag }}{% endfor %}{% for auto_tag in request.args.getlist('auto_tag') %}&auto_tag={{ auto_tag }}{% endfor %}{% if request.args.get('auto_tags_count') %}&auto_tags_count={{ request.args.get('auto_tags_count') }}{% endif %}{% if request.args.get('ana_type') %}&ana_type={{ request.args.get('ana_type') }}{% endif %}{% if request.args.get('bukan') %}&bukan={{ request.args.get('bukan') }}{% endif %}">上一页</a>
+                {% else %}
+                    <a href="#" style="opacity: 0.5; cursor: not-allowed;">上一页</a>
+                {% endif %}
+                
+                {% for page_num in pagination.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                            <a href="?page={{ page_num }}&per_page={{ per_page }}{% if request.args.get('code_name') %}&code_name={{ request.args.get('code_name') }}{% endif %}{% if request.args.get('code') %}&code={{ request.args.get('code') }}{% endif %}{% if request.args.get('industry') %}&industry={{ request.args.get('industry') }}{% endif %}{% if request.args.get('status') %}&status={{ request.args.get('status') }}{% endif %}{% for tag in request.args.getlist('tag') %}&tag={{ tag }}{% endfor %}{% for auto_tag in request.args.getlist('auto_tag') %}&auto_tag={{ auto_tag }}{% endfor %}{% if request.args.get('auto_tags_count') %}&auto_tags_count={{ request.args.get('auto_tags_count') }}{% endif %}{% if request.args.get('ana_type') %}&ana_type={{ request.args.get('ana_type') }}{% endif %}{% if request.args.get('bukan') %}&bukan={{ request.args.get('bukan') }}{% endif %}" class="active">{{ page_num }}</a>
+                        {% else %}
+                            <a href="?page={{ page_num }}&per_page={{ per_page }}{% if request.args.get('code_name') %}&code_name={{ request.args.get('code_name') }}{% endif %}{% if request.args.get('code') %}&code={{ request.args.get('code') }}{% endif %}{% if request.args.get('industry') %}&industry={{ request.args.get('industry') }}{% endif %}{% if request.args.get('status') %}&status={{ request.args.get('status') }}{% endif %}{% for tag in request.args.getlist('tag') %}&tag={{ tag }}{% endfor %}{% for auto_tag in request.args.getlist('auto_tag') %}&auto_tag={{ auto_tag }}{% endfor %}{% if request.args.get('auto_tags_count') %}&auto_tags_count={{ request.args.get('auto_tags_count') }}{% endif %}{% if request.args.get('ana_type') %}&ana_type={{ request.args.get('ana_type') }}{% endif %}{% if request.args.get('bukan') %}&bukan={{ request.args.get('bukan') }}{% endif %}">{{ page_num }}</a>
+                        {% endif %}
+                    {% else %}
+                        <span>...</span>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagination.has_next %}
+                    <a href="?page={{ pagination.next_num }}&per_page={{ per_page }}{% if request.args.get('code_name') %}&code_name={{ request.args.get('code_name') }}{% endif %}{% if request.args.get('code') %}&code={{ request.args.get('code') }}{% endif %}{% if request.args.get('industry') %}&industry={{ request.args.get('industry') }}{% endif %}{% if request.args.get('status') %}&status={{ request.args.get('status') }}{% endif %}{% for tag in request.args.getlist('tag') %}&tag={{ tag }}{% endfor %}{% for auto_tag in request.args.getlist('auto_tag') %}&auto_tag={{ auto_tag }}{% endfor %}{% if request.args.get('auto_tags_count') %}&auto_tags_count={{ request.args.get('auto_tags_count') }}{% endif %}{% if request.args.get('ana_type') %}&ana_type={{ request.args.get('ana_type') }}{% endif %}{% if request.args.get('bukan') %}&bukan={{ request.args.get('bukan') }}{% endif %}">下一页</a>
+                {% else %}
+                    <a href="#" style="opacity: 0.5; cursor: not-allowed;">下一页</a>
+                {% endif %}
+            </div>
+        {% endif %}
+        
+        <!-- 返回首页链接 -->
+        <div class="back-link">
+            <a href="/">返回首页</a>
+        </div>
+    </div>
+    
+    <!-- 标签编辑弹窗 -->
+    <div id="tagsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background-color: white; padding: 20px; border-radius: 8px; width: 500px; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
+            <h2>编辑标签 - <span id="modalStockName"></span></h2>
+            <input type="hidden" id="modalStockId">
+            <input type="hidden" id="modalStockCode">
+            
+            <div style="margin: 20px 0;">
+                <p>可选标签：</p>
+                <div id="availableTags" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                        <input type="checkbox" class="tagCheckbox" value="重点" style="margin-right: 5px;">重点
+                    </label>
+                    <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                        <input type="checkbox" class="tagCheckbox" value="观察" style="margin-right: 5px;">观察
+                    </label>
+                    <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                        <input type="checkbox" class="tagCheckbox" value="垄断" style="margin-right: 5px;">垄断
+                    </label>
+                    <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                        <input type="checkbox" class="tagCheckbox" value="半垄断" style="margin-right: 5px;">半垄断
+                    </label>
+                    <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                        <input type="checkbox" class="tagCheckbox" value="量化" style="margin-right: 5px;">量化
+                    </label>
+                    <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                        <input type="checkbox" class="tagCheckbox" value="不看" style="margin-right: 5px;">不看
+                    </label>
+                </div>
+            </div>
+            
+            <div style="text-align: right;">
+                <button onclick="closeTagsModal()" style="background-color: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">取消</button>
+                <button onclick="saveTags()" style="background-color: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 排序相关变量
+        let currentSortColumn = -1;
+        let currentSortDirection = 1; // 1表示升序，-1表示降序
+        let originalTableData = null;
+        
+        // 页面加载完成后保存原始表格数据
+        document.addEventListener('DOMContentLoaded', function() {
+            // 保存原始表格数据以便重置
+            const tableBody = document.getElementById('stockTableBody');
+            if (tableBody) {
+                // 克隆原始表格数据
+                const rows = Array.from(tableBody.rows);
+                originalTableData = rows.map(row => {
+                    const clone = row.cloneNode(true);
+                    // 存储原始索引用于多列排序
+                    clone.dataset.originalIndex = row.rowIndex;
+                    return clone;
+                });
+            }
+        });
+        
+
+        
+        // 更改每页显示数量
+        function changePageSize() {
+            const per_page = document.getElementById('per_page').value;
+            const code_name = document.getElementById('code_name').value;
+            const code = document.getElementById('code').value;
+            const status = document.getElementById('status').value;
+        
+            // 获取所有选中的标签
+            const selectedTags = [];
+            const tagCheckboxes = document.querySelectorAll('input[name="tag"]:checked');
+            tagCheckboxes.forEach(checkbox => {
+                selectedTags.push(checkbox.value);
+            });
+        
+            let url = `?page=1&per_page=${per_page}`;
+            if (code_name) url += `&code_name=${encodeURIComponent(code_name)}`;
+            if (code) url += `&code=${encodeURIComponent(code)}`;
+            if (status) url += `&status=${status}`;
+            // 添加所有选中的标签到URL
+            selectedTags.forEach(tag => {
+                url += `&tag=${encodeURIComponent(tag)}`;
+            });
+        
+            window.location.href = url;
+        }
+    
+        // 打开标签编辑弹窗
+        function editTags(stockId, stockCode, stockName) {
+            // 获取调用此函数的按钮元素，从中读取标签数据
+            const button = event.currentTarget;
+            let currentTags = [];
+
+            // 尝试从data-tags属性中获取标签数据
+            if (button && button.dataset && button.dataset.tags) {
+                try {
+                    // 先获取原始数据
+                    const rawTagsData = button.dataset.tags;
+                    // 尝试解析为JSON
+                    currentTags = JSON.parse(rawTagsData);
+                    
+                    // 确保是数组格式
+                    if (!Array.isArray(currentTags)) {
+                        // 如果不是数组，尝试其他可能的格式转换
+                        if (typeof currentTags === 'string') {
+                            // 如果是字符串，可能是逗号分隔的标签
+                            currentTags = currentTags.split(',').map(tag => tag.trim()).filter(tag => tag);
+                        } else {
+                            // 如果是其他类型，转为空数组
+                            currentTags = [];
+                        }
+                    }
+                } catch (e) {
+                    // 解析失败时，尝试直接将data-tags作为字符串处理
+                    const rawTagsData = button.dataset.tags;
+                    if (typeof rawTagsData === 'string' && rawTagsData.trim()) {
+                        // 如果包含数组特征，尝试处理
+                        if (rawTagsData.startsWith('[') && rawTagsData.endsWith(']')) {
+                            // 可能是格式不正确的JSON数组
+                            try {
+                                // 尝试简单处理，移除可能的引号和空白
+                                const cleanTags = rawTagsData.replace(/[\[\]'"\s]/g, '');
+                                currentTags = cleanTags.split(',').filter(tag => tag);
+                            } catch (e) {
+                                currentTags = [];
+                            }
+                        } else {
+                            // 尝试作为逗号分隔的标签处理
+                            currentTags = rawTagsData.split(',').map(tag => tag.trim()).filter(tag => tag);
+                        }
+                    } else {
+                        currentTags = [];
+                    }
+                }
+            }
+            
+            // 设置弹窗数据
+            const modalStockIdElem = document.getElementById('modalStockId');
+            const modalStockCodeElem = document.getElementById('modalStockCode');
+            const modalStockNameElem = document.getElementById('modalStockName');
+            const tagsModalElem = document.getElementById('tagsModal');
+            
+            if (modalStockIdElem) modalStockIdElem.value = stockId;
+            if (modalStockCodeElem) modalStockCodeElem.value = stockCode;
+            if (modalStockNameElem) modalStockNameElem.textContent = stockName;
+            
+            // 重置所有复选框
+            const checkboxes = document.querySelectorAll('.tagCheckbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+
+            // 选中对应的复选框
+            if (currentTags && Array.isArray(currentTags)) {
+                currentTags.forEach(tag => {
+                    // 确保tag是字符串
+                    const tagStr = String(tag).trim();
+                    if (tagStr) {
+                        // 使用多种方式尝试查找匹配的复选框
+                        let checkbox = document.querySelector(`.tagCheckbox[value="${tagStr}"]`);
+                        
+                        // 如果没找到，尝试忽略大小写查找
+                        if (!checkbox) {
+                            const allCheckboxes = document.querySelectorAll('.tagCheckbox');
+                            for (let i = 0; i < allCheckboxes.length; i++) {
+                                if (allCheckboxes[i].value.toLowerCase() === tagStr.toLowerCase()) {
+                                    checkbox = allCheckboxes[i];
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (checkbox) {
+                            checkbox.checked = true;
+                        }
+                    }
+                });
+            }
+            
+            // 显示弹窗
+            if (tagsModalElem) {
+                tagsModalElem.style.display = 'flex';
+            }
+        }
+    
+        // 关闭标签编辑弹窗
+        function closeTagsModal() {
+            const tagsModal = document.getElementById('tagsModal');
+            if (tagsModal) {
+                tagsModal.style.display = 'none';
+            }
+        }
+    
+        // 保存标签
+        function saveTags() {
+            const stockId = document.getElementById('modalStockId').value;
+            const stockCode = document.getElementById('modalStockCode').value;
+            
+            // 获取选中的标签
+            const selectedTags = [];
+            const checkboxes = document.querySelectorAll('.tagCheckbox:checked');
+            checkboxes.forEach(checkbox => {
+                selectedTags.push(checkbox.value);
+            });
+            
+            // 发送AJAX请求保存标签
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `/stock_basic/save_tags/${stockId}`, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        // 关闭弹窗并刷新页面
+                        closeTagsModal();
+                        location.reload();
+                    } else {
+                        alert('保存失败：' + xhr.responseText);
+                    }
+                }
+            };
+            xhr.send(JSON.stringify({ tags: selectedTags }));
+        }
+    
+        // 打开备注编辑弹窗
+        function editRemark(stockId, stockCode, stockName, event) {
+            document.getElementById('remarkModalStockId').value = stockId;
+            document.getElementById('remarkModalStockCode').value = stockCode;
+            document.getElementById('remarkModalStockName').textContent = stockName;
+            
+            // 通过事件对象获取按钮元素，然后获取data-remark属性
+            let currentRemark = '';
+            let currentRiskMemo = '';
+            try {
+                // 确保事件对象存在
+                if (event) {
+                    // 获取触发事件的按钮元素
+                    const button = event.target || event.srcElement;
+                    if (button) {
+                        // 获取data-remark属性值
+                        currentRemark = button.getAttribute('data-remark') || '';
+                        if(currentRemark == 'None'){
+                            currentRemark = '';
+                        }
+                        // 获取data-risk-memo属性值
+                        currentRiskMemo = button.getAttribute('data-risk-memo') || '';
+                        if(currentRiskMemo == 'None'){
+                            currentRiskMemo = '';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('获取备注内容失败:', error);
+            }
+            
+            // 设置文本框内容
+            document.getElementById('remarkTextarea').value = currentRemark || '';
+            document.getElementById('riskMemoTextarea').value = currentRiskMemo || '';
+            
+            // 更新字符计数
+            const charCount = document.getElementById('charCount');
+            if (charCount) {
+                charCount.textContent = currentRemark ? currentRemark.length : 0;
+            }
+            
+            // 显示弹窗
+            document.getElementById('remarkModal').style.display = 'flex';
+        }
+    
+        // 关闭备注编辑弹窗
+        function closeRemarkModal() {
+            document.getElementById('remarkModal').style.display = 'none';
+        }
+    
+        // 保存备注
+        function saveRemark() {
+            const stockId = document.getElementById('remarkModalStockId').value;
+            const remark = document.getElementById('remarkTextarea').value;
+            const riskMemo = document.getElementById('riskMemoTextarea').value;
+            
+            // 发送AJAX请求保存备注
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `/stock_basic/save_remark/${stockId}`, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        // 关闭弹窗并刷新页面
+                        closeRemarkModal();
+                        location.reload();
+                    } else {
+                        alert('保存失败：' + xhr.responseText);
+                    }
+                }
+            };
+            xhr.send(JSON.stringify({ remark: remark, risk_memo: riskMemo }));
+        }
+    </script>
+
+    <!-- 备注编辑弹窗 -->
+    <div id="remarkModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background-color: white; padding: 20px; border-radius: 8px; width: 600px; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
+            <h2>编辑备注 - <span id="remarkModalStockName"></span></h2>
+            <input type="hidden" id="remarkModalStockId">
+            <input type="hidden" id="remarkModalStockCode">
+            
+            <div style="margin: 20px 0;">
+                <p>备注内容（最多1000个文字）：</p>
+                <textarea id="remarkTextarea" rows="10" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; resize: vertical;" maxlength="1000"></textarea>
+                <div style="text-align: right; margin-top: 5px; font-size: 12px; color: #666;">
+                    <span id="charCount">0</span>/1000
+                </div>
+            </div>
+            <div style="margin: 20px 0;">
+                <p>风险备注（最多200个文字）：</p>
+                <textarea id="riskMemoTextarea" rows="4" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; resize: vertical;" maxlength="200"></textarea>
+                <div style="text-align: right; margin-top: 5px; font-size: 12px; color: #666;">
+                    <span id="riskMemoCharCount">0</span>/200
+                </div>
+            </div>
+            
+            <div style="text-align: right;">
+                <button onclick="closeRemarkModal()" style="background-color: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">取消</button>
+                <button onclick="saveRemark()" style="background-color: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 字符计数功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const textarea = document.getElementById('remarkTextarea');
+            const riskMemoTextarea = document.getElementById('riskMemoTextarea');
+            const charCount = document.getElementById('charCount');
+            const riskMemoCharCount = document.getElementById('riskMemoCharCount');
+            
+            if (textarea && charCount) {
+                textarea.addEventListener('input', function() {
+                    const count = this.value.length;
+                    charCount.textContent = count;
+                    
+                    // 当接近字数限制时改变颜色
+                    if (count > 900) {
+                        charCount.style.color = '#FF9800';
+                    } else {
+                        charCount.style.color = '#666';
+                    }
+                    
+                    // 当达到字数限制时改变颜色为红色
+                    if (count === 1000) {
+                        charCount.style.color = '#f44336';
+                    }
+                });
+            }
+            if (riskMemoTextarea && riskMemoCharCount) {
+                riskMemoTextarea.addEventListener('input', function() {
+                    const count = this.value.length;
+                    riskMemoCharCount.textContent = count;
+                    
+                    // 当接近字数限制时改变颜色
+                    if (count > 180) {
+                        riskMemoCharCount.style.color = '#FF9800';
+                    } else {
+                        riskMemoCharCount.style.color = '#666';
+                    }
+                    
+                    // 当达到字数限制时改变颜色为红色
+                    if (count === 200) {
+                        riskMemoCharCount.style.color = '#f44336';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

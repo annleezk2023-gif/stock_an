@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        /* 表格样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+            table-layout: auto; /* 默认值可省略 */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+            white-space: nowrap; /* 防止内容换行影响宽度计算 */
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        
+        /* 分页样式 */
+        .pagination {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .pagination a {
+            margin: 0 5px;
+            padding: 5px 10px;
+            text-decoration: none;
+            border: 1px solid #ddd;
+            color: #333;
+            border-radius: 3px;
+        }
+        .pagination a.active {
+            background-color: #4CAF50;
+            color: white;
+            border: 1px solid #4CAF50;
+        }
+        
+        /* 标签样式 */
+        .tag {
+            display: inline-block;
+            padding: 3px 8px;
+            margin: 2px;
+            border-radius: 3px;
+            font-size: 12px;
+            background-color: #e7f3fe;
+            color: #31708f;
+        }
+        
+        /* 搜索表单样式 */
+        .search-form {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .search-form input, .search-form select {
+            margin-right: 10px;
+            padding: 5px;
+        }
+        .search-form button {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        /* 返回首页链接样式 */
+        .back-link {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .back-link a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        
+        /* 排序图标样式 */
+        .sort-icon {
+            font-size: 12px;
+            margin-left: 5px;
+            transition: transform 0.2s;
+        }
+        .sort-asc {
+            transform: rotate(-180deg);
+        }
+        .sort-desc {
+            transform: rotate(0deg);
+        }
+        
+        /* 数字格式化样式 */
+        .number-cell {
+            text-align: right;
+        }
+        
+        /* 链接样式 */
+        .code-link {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        .code-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 查询表单 -->
+        <div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 8px;">
+            <form id="search-form" method="get" action="/stock_basic">
+                证券名称：
+                <input type="text" id="code_name" name="code_name" placeholder="输入证券名称" value="{{ request.args.get('code_name', '') }}" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                证券代码：
+                <input type="text" id="code" name="code" placeholder="输入证券代码" value="{{ request.args.get('code', '') }}" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                行业：
+                <input type="text" id="industry" name="industry" placeholder="输入行业" value="{{ request.args.get('industry', '') }}" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                上市状态：
+                <select id="status" name="status" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                    <option value="" {{ 'selected' if request.args.get('status', '0') == '' else '' }}>全部</option>
+                    <option value="1" {{ 'selected' if request.args.get('status', '1') == '1' else '' }}>上市</option>
+                    <option value="0" {{ 'selected' if request.args.get('status', '') == '0' else '' }}>退市</option>
+                </select>
+                <br/>标签：
+                    <input type="checkbox" name="tag" value="重点" {{ 'checked' if '重点' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">重点
+                    <input type="checkbox" name="tag" value="观察" {{ 'checked' if '观察' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">观察
+                    <input type="checkbox" name="tag" value="垄断" {{ 'checked' if '垄断' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">垄断
+                    <input type="checkbox" name="tag" value="半垄断" {{ 'checked' if '半垄断' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">半垄断
+                    <input type="checkbox" name="tag" value="量化" {{ 'checked' if '量化' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">量化
+                    <input type="checkbox" name="tag" value="不看" {{ 'checked' if '不看' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">不看
+                    <input type="checkbox" name="tag" value="_BLANK_" {{ 'checked' if '_BLANK_' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">空白
+
+                    ---------排除：<input type="checkbox" name="bukan" value="1" {{ 'checked' if request.args.get('bukan') == '1' else '' }} style="margin-right: 5px;">不看
+                    ---------<input type="checkbox" name="ana_type" value="1" {{ 'checked' if request.args.get('ana_type') == '1' else '' }} style="margin-right: 5px;">看统计页面
+                <br/>自动标签：
+                    <input type="checkbox" name="auto_tag" value="15成长" {{ 'checked' if '15成长' in (request.args.getlist('auto_tag')|default([])) else '' }} style="margin-right: 5px;">15成长
+                    <input type="checkbox" name="auto_tag" value="5成长大股" {{ 'checked' if '5成长大股' in (request.args.getlist('auto_tag')|default([])) else '' }} style="margin-right: 5px;">5成长大股
+                    <input type="checkbox" name="auto_tag" value="3股息" {{ 'checked' if '3股息' in (request.args.getlist('auto_tag')|default([])) else '' }} style="margin-right: 5px;">3股息
+                    <input type="checkbox" name="auto_tag" value="1股息5成长" {{ 'checked' if '1股息5成长' in (request.args.getlist('auto_tag')|default([])) else '' }} style="margin-right: 5px;">1股息5成长
+                    <input type="checkbox" name="auto_tag" value="_BLANK_" {{ 'checked' if '_BLANK_' in (request.args.getlist('auto_tag')|default([])) else '' }} style="margin-right: 5px;">空白
+                <BR/>自动标签数：
+                    <input type="text" id="auto_tags_count" name="auto_tags_count" placeholder="输入自动标签数" value="{{ request.args.get('auto_tags_count', '') }}" style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                    <button type="submit" style="background-color: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">查询</button>
+                    <button type="button" onclick="resetSearch()" style="background-color: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-left: 10px;">重置</button>
+            </form>
+        </div>
+
+        <!-- 每页显示数量选择器 -->
+        <div class="page-size-selector">
+            <label for="per_page">每页显示数量：</label>
+            <select id="per_page" onchange="changePageSize()">
+                <option value="100" {{ 'selected' if per_page == 100 else '' }}>100</option>
+                <option value="200" {{ 'selected' if per_page == 200 else '' }}>200</option>
+                <option value="500" {{ 'selected' if per_page == 500 else '' }}>500</option>
+            </select>
+        </div>
+
+        <script>
+            // 重置查询表单
+            function resetSearch() {
+                document.getElementById('code_name').value = '';
+                document.getElementById('code').value = '';
+                document.getElementById('industry').value = '';
+                document.getElementById('status').value = '1';
+                document.getElementById('auto_tags_count').value = '';
+                // 重置所有标签复选框
+                const tagCheckboxes = document.querySelectorAll('input[name="tag"]');
+                tagCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                // 重置所有自动标签复选框
+                const autoTagCheckboxes = document.querySelectorAll('input[name="auto_tag"]');
+                autoTagCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                document.getElementById('search-form').submit();
+            }
+            
+            // 更改每页显示数量
+            function changePageSize() {
+                const perPage = document.getElementById('per_page').value;
+                // 创建一个新的URLSearchParams对象，包含所有当前表单参数
+                const params = new URLSearchParams();
+                params.set('per_page', perPage);
+                
+                // 添加所有表单参数
+                if (document.getElementById('code_name').value) {
+                    params.set('code_name', document.getElementById('code_name').value);
+                }
+                if (document.getElementById('code').value) {
+                    params.set('code', document.getElementById('code').value);
+                }
+                if (document.getElementById('industry').value) {
+                    params.set('industry', document.getElementById('industry').value);
+                }
+                params.set('status', document.getElementById('status').value);
+                
+                // 添加所有选中的标签
+                const tagCheckboxes = document.querySelectorAll('input[name="tag"]:checked');
+                tagCheckboxes.forEach(checkbox => {
+                    params.append('tag', checkbox.value);
+                });
+                
+                // 添加所有选中的自动标签
+                const autoTagCheckboxes = document.querySelectorAll('input[name="auto_tag"]:checked');
+                autoTagCheckboxes.forEach(checkbox => {
+                    params.append('auto_tag', checkbox.value);
+                });
+                
+                if (document.getElementById('auto_tags_count').value) {
+                    params.set('auto_tags_count', document.getElementById('auto_tags_count').value);
+                }
+                
+                // 构建新的URL并跳转
+                window.location.href = '/stock_basic_ana?' + params.toString();
+            }
+        </script>
+        </div>
+        
+        <!-- 显示数据表格 -->
+        <table>
+            <thead>
+                <tr>
+                    <th>名称 </th>
+                    <th>最近交易日期</th>
+                    <th class="number-cell">股息</th>
+                    <th class="number-cell">营收增长</th>
+                    <th class="number-cell">PE百分位 </th>
+                    <th class="number-cell">交易</th>
+                    <th>标签</th>
+                </tr>
+            </thead>
+            <tbody id="stockTableBody">
+                {% if stock_basics %}
+                    {% for item in stock_basics %}
+                        <tr>
+                            <td>
+                                <a href="https://xueqiu.com/S/{{ item.code.replace('.', '') }}" target="_blank">{{ item.code }}</a><br/>
+                                <a href="/stock_trade/{{ item.code }}" target="_blank" class="code-link">{{ item.code_name }}</a><br/>
+                                市值：{{ '%.0f' | format(item.last_kline.total_market_value) if item.last_kline.total_market_value else '-' }}
+                            </td>
+                            <td>{{ item.last_kline.date if item.last_kline.date else '-' }}<br/>
+                                PE：
+                                {% if item.ana.tradeBuyPE and item.ana.tradeBuyPE > item.last_kline.peTTM %}
+                                 <span style="color: green;">{{ '%.1f' | format(item.last_kline.peTTM) if item.last_kline.peTTM else '-' }}</span>
+                                {% elif item.ana.tradeSalePE and item.ana.tradeSalePE < item.last_kline.peTTM %}
+                                 <span style="color: red;">{{ '%.1f' | format(item.last_kline.peTTM) if item.last_kline.peTTM else '-' }}</span>
+                                {% else %}
+                                    {{ '%.1f' | format(item.last_kline.peTTM) if item.last_kline.peTTM else '-' }} 
+                                {% endif %}
+                                
+                                <br/>
+                                股价：{{ '%.1f' | format(item.last_kline.close) if item.last_kline.close else '-' }}<br/>
+                                换手率：5天{{ '%.1f' | format(item.last_kline.turn_percent_5) if item.last_kline.turn_percent_5 else '-' }}%<br/>
+                                    15天{{ '%.1f' | format(item.last_kline.turn_percent_15) if item.last_kline.turn_percent_15 else '-' }}%<br/>
+                                    30天{{ '%.1f' | format(item.last_kline.turn_percent_30) if item.last_kline.turn_percent_30 else '-' }}%
+                            </td>
+                            <td>每股收益年：{{ '%.1f' | format(item.ana.epsTTM) if item.ana.epsTTM else '' }}<br/>
+                                股息：{{ '%.2f' | format(item.ana.dividCashPsBeforeTax) if item.ana.dividCashPsBeforeTax else '-' }}<br/>
+                                股息率：{{ '%.2f' | format(item.last_kline.stock_fenghong_percent) if item.last_kline.stock_fenghong_percent else '-' }}%
+                            </td>
+                            <td>营收增速：{{ '%.2f' | format(item.ana.MBRevenueRate) if item.ana.MBRevenueRate else '-' }}%<br/>
+                                利润增速：{{ '%.2f' | format(item.ana.netProfitRate) if item.ana.netProfitRate else '-' }}%<br/>
+                                毛利率：{{ '%.1f' | format(item.ana.gpMargin) if item.ana.gpMargin else '-' }}%<br/>
+                                净利率：{{ '%.1f' | format(item.ana.npMargin) if item.ana.npMargin else '-' }}%<br/>
+                                roe：
+                                {% if item.ana.roeAvg and item.ana.roeAvg > 20 %}
+                                    <span style="color: green;">{{ '%.2f' | format(item.ana.roeAvg) if item.ana.roeAvg else '-' }}%</span>
+                                {% else %}
+                                    {{ '%.2f' | format(item.ana.roeAvg) if item.ana.roeAvg else '-' }}%
+                                {% endif %}
+                            </td>
+                            <td>
+                                ------PE ----- PS ---- PB<br/>
+                                1年
+                                {% if item.last_kline.pe_year_1_percent %}
+                                    {% if item.last_kline.pe_year_1_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(item.last_kline.pe_year_1_percent) if item.last_kline.pe_year_1_percent else '-' }}%</span>
+                                    {% elif item.last_kline.pe_year_1_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(item.last_kline.pe_year_1_percent) if item.last_kline.pe_year_1_percent else '-' }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(item.last_kline.pe_year_1_percent) if item.last_kline.pe_year_1_percent else '-' }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if item.last_kline.ps_year_1_percent %}
+                                    {% if item.last_kline.ps_year_1_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(item.last_kline.ps_year_1_percent) if item.last_kline.ps_year_1_percent else '-' }}%</span>
+                                    {% elif item.last_kline.ps_year_1_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(item.last_kline.ps_year_1_percent) if item.last_kline.ps_year_1_percent else '-' }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(item.last_kline.ps_year_1_percent) if item.last_kline.ps_year_1_percent else '-' }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if item.last_kline.pb_year_1_percent %}
+                                    {% if item.last_kline.pb_year_1_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(item.last_kline.pb_year_1_percent) if item.last_kline.pb_year_1_percent else '-' }}%</span>
+                                    {% elif item.last_kline.pb_year_1_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(item.last_kline.pb_year_1_percent) if item.last_kline.pb_year_1_percent else '-' }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(item.last_kline.pb_year_1_percent) if item.last_kline.pb_year_1_percent else '-' }}%
+                                    {% endif %}
+                                {% endif %}
+
+                                <br/>
+                                3年
+                                {% if item.last_kline.pe_year_3_percent %}
+                                    {% if item.last_kline.pe_year_3_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(item.last_kline.pe_year_3_percent) if item.last_kline.pe_year_3_percent else '-' }}%</span>
+                                    {% elif item.last_kline.pe_year_3_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(item.last_kline.pe_year_3_percent) if item.last_kline.pe_year_3_percent else '-' }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(item.last_kline.pe_year_3_percent) if item.last_kline.pe_year_3_percent else '-' }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if item.last_kline.ps_year_3_percent %}
+                                    {% if item.last_kline.ps_year_3_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(item.last_kline.ps_year_3_percent) if item.last_kline.ps_year_3_percent else '-' }}%</span>
+                                    {% elif item.last_kline.ps_year_3_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(item.last_kline.ps_year_3_percent) if item.last_kline.ps_year_3_percent else '-' }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(item.last_kline.ps_year_3_percent) if item.last_kline.ps_year_3_percent else '-' }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if item.last_kline.pb_year_3_percent %}
+                                    {% if item.last_kline.pb_year_3_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(item.last_kline.pb_year_3_percent) if item.last_kline.pb_year_3_percent else '-' }}%</span>
+                                    {% elif item.last_kline.pb_year_3_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(item.last_kline.pb_year_3_percent) if item.last_kline.pb_year_3_percent else '-' }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(item.last_kline.pb_year_3_percent) if item.last_kline.pb_year_3_percent else '-' }}%
+                                    {% endif %}
+                                {% endif %}
+                                <br/>
+                                5年
+                                {% if item.last_kline.pe_year_5_percent %}
+                                    {% if item.last_kline.pe_year_5_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(item.last_kline.pe_year_5_percent) if item.last_kline.pe_year_5_percent else '-' }}%</span>
+                                    {% elif item.last_kline.pe_year_5_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(item.last_kline.pe_year_5_percent) if item.last_kline.pe_year_5_percent else '-' }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(item.last_kline.pe_year_5_percent) if item.last_kline.pe_year_5_percent else '-' }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if item.last_kline.ps_year_5_percent %}
+                                    {% if item.last_kline.ps_year_5_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(item.last_kline.ps_year_5_percent) if item.last_kline.ps_year_5_percent else '-' }}%</span>
+                                    {% elif item.last_kline.ps_year_5_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(item.last_kline.ps_year_5_percent) if item.last_kline.ps_year_5_percent else '-' }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(item.last_kline.ps_year_5_percent) if item.last_kline.ps_year_5_percent else '-' }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if item.last_kline.pb_year_5_percent %}
+                                    {% if item.last_kline.pb_year_5_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(item.last_kline.pb_year_5_percent) if item.last_kline.pb_year_5_percent else '-' }}%</span>
+                                    {% elif item.last_kline.pb_year_5_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(item.last_kline.pb_year_5_percent) if item.last_kline.pb_year_5_percent else '-' }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(item.last_kline.pb_year_5_percent) if item.last_kline.pb_year_5_percent else '-' }}%
+                                    {% endif %}
+                                {% endif %}
+                                
+                            </td>
+                            <td>
+                                买入PE<input type="text" id="tradeBuyPE-{{ item.code }}" value="{{ '%.0f' | format(item.ana.tradeBuyPE) if item.ana.tradeBuyPE else '' }}" style="width: 30px;"><br/>
+                                全仓PE<input type="text" id="tradeBuyAllPE-{{ item.code }}" value="{{ '%.0f' | format(item.ana.tradeBuyAllPE) if item.ana.tradeBuyAllPE else '' }}" style="width: 30px;">
+                                <br/>
+                                卖出PE<input type="text" id="tradeSalePE-{{ item.code }}" value="{{ '%.0f' | format(item.ana.tradeSalePE) if item.ana.tradeSalePE else '' }}" style="width: 30px;"><br/>
+                                清仓PE<input type="text" id="tradeSaleAllPE-{{ item.code }}" value="{{ '%.0f' | format(item.ana.tradeSaleAllPE) if item.ana.tradeSaleAllPE else '' }}" style="width: 30px;"><br/>
+                                <button onclick="savePEValues('{{ item.code }}')">保存</button>
+                            </td>
+                            <td>
+                                手动：{% if item.tags %}
+                                    <script>
+                                        // 获取标签文本
+                                        var tagsText = document.createTextNode('{{ item.tags }}').nodeValue;
+                                        // 使用字符串操作直接提取标签内容，避免JSON解析问题
+                                        // 1. 移除首尾的方括号
+                                        var cleanedText = tagsText.replace(/^\[/, '').replace(/\]$/, '');
+                                        // 2. 处理各种引号实体和转义
+                                        cleanedText = cleanedText.replace(/&#34;/g, '"')
+                                                              .replace(/&quot;/g, '"')
+                                                              .replace(/&#39;/g, '')
+                                                              .replace(/'/g, '"');
+                                        // 3. 按逗号分割，考虑可能的空格
+                                        var tagItems = cleanedText.split(/\s*,\s*/);
+                                        // 4. 移除每个标签的引号并显示
+                                        tagItems.forEach(function(tag) {
+                                            // 移除可能的首尾引号
+                                            tag = tag.replace(/^"/, '').replace(/"$/, '').trim();
+                                            if (tag) {
+                                                var tagSpan = document.createElement('span');
+                                                tagSpan.style.backgroundColor = '#4CAF50';
+                                                tagSpan.style.color = 'white';
+                                                tagSpan.style.padding = '2px 8px';
+                                                tagSpan.style.borderRadius = '12px';
+                                                tagSpan.style.fontSize = '12px';
+                                                tagSpan.style.marginRight = '4px';
+                                                tagSpan.textContent = tag;
+                                                document.currentScript.parentNode.appendChild(tagSpan);
+                                            }
+                                        });
+                                    </script>
+                                {% else %}
+                                    -
+                                {% endif %}
+                                <br/>自动：{% if item.auto_tags %}
+                                    <script>
+                                        // 获取标签文本
+                                        var tagsText = document.createTextNode('{{ item.auto_tags }}').nodeValue;
+                                        // 使用字符串操作直接提取标签内容，避免JSON解析问题
+                                        // 1. 移除首尾的方括号
+                                        var cleanedText = tagsText.replace(/^\[/, '').replace(/\]$/, '');
+                                        // 2. 处理各种引号实体和转义
+                                        cleanedText = cleanedText.replace(/&#34;/g, '"')
+                                                              .replace(/&quot;/g, '"')
+                                                              .replace(/&#39;/g, '')
+                                                              .replace(/'/g, '"');
+                                        // 3. 按逗号分割，考虑可能的空格
+                                        var tagItems = cleanedText.split(/\s*,\s*/);
+                                        // 4. 移除每个标签的引号并显示
+                                        tagItems.forEach(function(tag) {
+                                            // 移除可能的首尾引号
+                                            tag = tag.replace(/^"/, '').replace(/"$/, '').trim();
+                                            if (tag) {
+                                                var tagSpan = document.createElement('span');
+                                                tagSpan.style.backgroundColor = '#4CAF50';
+                                                tagSpan.style.color = 'white';
+                                                tagSpan.style.padding = '2px 8px';
+                                                tagSpan.style.borderRadius = '12px';
+                                                tagSpan.style.fontSize = '12px';
+                                                tagSpan.style.marginRight = '4px';
+                                                tagSpan.textContent = tag;
+                                                document.currentScript.parentNode.appendChild(tagSpan);
+                                            }
+                                        });
+                                    </script>
+                                {% else %}
+                                    -
+                                {% endif %}
+                                <br/>
+                                 经营：
+                                 {% if item.bao_tag %}
+                                   {{ item.bao_tag.statDate }}
+                                    {% if item.bao_tag.bao_tags_loss and item.bao_tag.bao_tags_loss | length > 2 %}
+                                        <span style="color: red;">{{ item.bao_tag.bao_tags_loss }}</span>
+                                    {% else %}
+                                        -
+                                    {% endif %}<br/> 
+                                    {{ item.bao_tag.bao_tags_positive if item.bao_tag.bao_tags_positive else '-' }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                                <br/>
+                                拆股分红：
+                                {% if item.bao_fenghong_tag %}
+                                    {{ item.bao_fenghong_tag.statDate }} 
+                                    {% if item.bao_fenghong_tag.bao_tags_loss and item.bao_fenghong_tag.bao_tags_loss | length > 2 %}
+                                        <span style="color: red;">{{ item.bao_fenghong_tag.bao_tags_loss }}</span>
+                                    {% else %}
+                                        -
+                                    {% endif %}<br/> 
+                                    {{ item.bao_fenghong_tag.bao_tags_positive if item.bao_fenghong_tag.bao_tags_positive else '-' }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+
+                        </tr>
+                        <tr>
+                            <td colspan="7">
+                                备注：{{ item.remark if item.remark else '-' }}<br/>
+                                风险：{{ item.risk_memo if item.risk_memo else '-' }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="40" style="text-align: center; padding: 20px;">暂无数据</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        
+        <!-- 分页导航 -->
+        {% if pagination %}
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                    <a href="?page={{ pagination.prev_num }}&per_page={{ per_page }}{% if request.args.get('code_name') %}&code_name={{ request.args.get('code_name') }}{% endif %}{% if request.args.get('code') %}&code={{ request.args.get('code') }}{% endif %}{% if request.args.get('industry') %}&industry={{ request.args.get('industry') }}{% endif %}{% if request.args.get('status') %}&status={{ request.args.get('status') }}{% endif %}{% for tag in request.args.getlist('tag') %}&tag={{ tag }}{% endfor %}{% for auto_tag in request.args.getlist('auto_tag') %}&auto_tag={{ auto_tag }}{% endfor %}{% if request.args.get('auto_tags_count') %}&auto_tags_count={{ request.args.get('auto_tags_count') }}{% endif %}{% if request.args.get('ana_type') %}&ana_type={{ request.args.get('ana_type') }}{% endif %}{% if request.args.get('bukan') %}&bukan={{ request.args.get('bukan') }}{% endif %}">上一页</a>
+                {% else %}
+                    <a href="#" style="opacity: 0.5; cursor: not-allowed;">上一页</a>
+                {% endif %}
+                
+                {% for page_num in pagination.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                            <a href="?page={{ page_num }}&per_page={{ per_page }}{% if request.args.get('code_name') %}&code_name={{ request.args.get('code_name') }}{% endif %}{% if request.args.get('code') %}&code={{ request.args.get('code') }}{% endif %}{% if request.args.get('industry') %}&industry={{ request.args.get('industry') }}{% endif %}{% if request.args.get('status') %}&status={{ request.args.get('status') }}{% endif %}{% for tag in request.args.getlist('tag') %}&tag={{ tag }}{% endfor %}{% for auto_tag in request.args.getlist('auto_tag') %}&auto_tag={{ auto_tag }}{% endfor %}{% if request.args.get('auto_tags_count') %}&auto_tags_count={{ request.args.get('auto_tags_count') }}{% endif %}{% if request.args.get('ana_type') %}&ana_type={{ request.args.get('ana_type') }}{% endif %}{% if request.args.get('bukan') %}&bukan={{ request.args.get('bukan') }}{% endif %}" class="active">{{ page_num }}</a>
+                        {% else %}
+                            <a href="?page={{ page_num }}&per_page={{ per_page }}{% if request.args.get('code_name') %}&code_name={{ request.args.get('code_name') }}{% endif %}{% if request.args.get('code') %}&code={{ request.args.get('code') }}{% endif %}{% if request.args.get('industry') %}&industry={{ request.args.get('industry') }}{% endif %}{% if request.args.get('status') %}&status={{ request.args.get('status') }}{% endif %}{% for tag in request.args.getlist('tag') %}&tag={{ tag }}{% endfor %}{% for auto_tag in request.args.getlist('auto_tag') %}&auto_tag={{ auto_tag }}{% endfor %}{% if request.args.get('auto_tags_count') %}&auto_tags_count={{ request.args.get('auto_tags_count') }}{% endif %}{% if request.args.get('ana_type') %}&ana_type={{ request.args.get('ana_type') }}{% endif %}{% if request.args.get('bukan') %}&bukan={{ request.args.get('bukan') }}{% endif %}">{{ page_num }}</a>
+                        {% endif %}
+                    {% else %}
+                        <span>...</span>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagination.has_next %}
+                    <a href="?page={{ pagination.next_num }}&per_page={{ per_page }}{% if request.args.get('code_name') %}&code_name={{ request.args.get('code_name') }}{% endif %}{% if request.args.get('code') %}&code={{ request.args.get('code') }}{% endif %}{% if request.args.get('industry') %}&industry={{ request.args.get('industry') }}{% endif %}{% if request.args.get('status') %}&status={{ request.args.get('status') }}{% endif %}{% for tag in request.args.getlist('tag') %}&tag={{ tag }}{% endfor %}{% for auto_tag in request.args.getlist('auto_tag') %}&auto_tag={{ auto_tag }}{% endfor %}{% if request.args.get('auto_tags_count') %}&auto_tags_count={{ request.args.get('auto_tags_count') }}{% endif %}{% if request.args.get('ana_type') %}&ana_type={{ request.args.get('ana_type') }}{% endif %}{% if request.args.get('bukan') %}&bukan={{ request.args.get('bukan') }}{% endif %}">下一页</a>
+                {% else %}
+                    <a href="#" style="opacity: 0.5; cursor: not-allowed;">下一页</a>
+                {% endif %}
+            </div>
+        {% endif %}
+        
+        <!-- 返回首页链接 -->
+        <div class="back-link">
+            <a href="/">返回首页</a>
+        </div>
+    </div>
+    
+    <script>
+    function savePEValues(stockCode) {
+        // 获取四个PE输入框的值
+        const tradeBuyPE = document.getElementById('tradeBuyPE-' + stockCode).value.trim();
+        const tradeBuyAllPE = document.getElementById('tradeBuyAllPE-' + stockCode).value.trim();
+        const tradeSalePE = document.getElementById('tradeSalePE-' + stockCode).value.trim();
+        const tradeSaleAllPE = document.getElementById('tradeSaleAllPE-' + stockCode).value.trim();
+        
+        // 验证输入值是否为有效数字
+        function validateNum(val) {
+            return val === '' || !isNaN(val) && val > 0;
+        }
+        
+        if (!validateNum(tradeBuyPE) || !validateNum(tradeBuyAllPE) || 
+            !validateNum(tradeSalePE) || !validateNum(tradeSaleAllPE)) {
+            alert('请输入有效的正数');
+            return;
+        }
+        
+        // 构建请求数据
+        const data = {
+            code: stockCode,
+            tradeBuyPE: tradeBuyPE ? parseFloat(tradeBuyPE) : null,
+            tradeBuyAllPE: tradeBuyAllPE ? parseFloat(tradeBuyAllPE) : null,
+            tradeSalePE: tradeSalePE ? parseFloat(tradeSalePE) : null,
+            tradeSaleAllPE: tradeSaleAllPE ? parseFloat(tradeSaleAllPE) : null
+        };
+        
+        // 发送AJAX请求
+        fetch('/save_pe_values', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken() // 如果需要CSRF保护
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert('保存成功');
+            } else {
+                alert('保存失败: ' + (result.error || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('错误:', error);
+            alert('保存过程中发生错误');
+        });
+    }
+    
+    // 获取CSRF令牌的辅助函数（如果应用使用CSRF保护）
+    function getCsrfToken() {
+        const cookieValue = document.cookie
+            .split('; ')  
+            .find(row => row.startsWith('XSRF-TOKEN='))
+            ?.split('=')[1];
+        return cookieValue ? decodeURIComponent(cookieValue) : '';
+    }
+    </script>
+</body>
+</html>
