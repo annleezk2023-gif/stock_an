@@ -51,7 +51,7 @@ class StrategyConfig:
     #交易配置：
     trading_interval = 1  # 每1个交易日交易一次
     max_holdings = 30  # 最大持仓股票数量
-    stop_trade_day	#止损止盈后暂停买入时长
+    stop_trade_day = 5	#止损止盈后暂停买入时长
 
     #交易配置：止盈
     profit_threshold_pe_start = 0.7  # 开始止盈阈值（PE分位），即此时开始卖出

@@ -4,62 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ year }}年交易日数据</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        tr:hover {
-            background-color: #f5f5f5;
-        }
-        .flash-message {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-            background-color: #ffebee;
-            color: #c62828;
-            border: 1px solid #ffcdd2;
-        }
-        .back-link {
-            display: inline-block;
-            background-color: #555;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-        .back-link:hover {
-            background-color: #777;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/styles.css">
 </head>
-<body>
+<body class="trade-dates-page">
     <div class="container">
         <h1>{{ year }}年交易日数据</h1>
         
@@ -70,7 +17,7 @@
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
-                    <div class="flash-message">{{ message }}</div>
+                    <div class="error-message">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}

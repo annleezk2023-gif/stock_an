@@ -205,8 +205,13 @@
 <body>
     <div class="container">
         <div class="stock-info">
-            <h1>{{ stock_name }} ({{ stock_code }}) 日K数据</h1>
-            <p>数据总量: {{ total_count }} 条</p>
+            {{ stock_name }} ({{ stock_code }}) 日K数据
+            数据总量: {{ total_count }} 条
+            <form method="get" action="/stock_trade/{{ stock_code }}">
+                <label for="lastTradeDate">最后交易日：</label>
+                <input type="date" id="lastTradeDate" name="lastTradeDate" value="{{ lastTradeDate }}" required>
+                <button type="submit" style="padding: 4px 8px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer;">提交</button>
+            </form>
         </div>
         
         <!-- 图表容器 -->

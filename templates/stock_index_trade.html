@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>指数对比分析</title>
+    <!-- 添加Chart.js和moment.js库 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0/dist/chartjs-adapter-moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .date-selector {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .date-input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .submit-btn {
+            padding: 8px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .submit-btn:hover {
+            background-color: #45a049;
+        }
+        .chart-container {
+            height: 500px;
+            width: 100%;
+            margin: 30px 0;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .table-container {
+            margin-top: 40px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .number-cell {
+            text-align: right;
+        }
+        .positive {
+            color: #ff0000;
+        }
+        .negative {
+            color: #00ff00;
+        }
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>指数对比分析</h1>
+        
+        <!-- 日期范围选择器 -->
+        <form method="POST" class="date-selector">
+            <label for="start_date">开始日期：</label>
+            <input type="date" id="start_date" name="start_date" class="date-input" value="{{ start_date }}" required>
+            <label for="end_date">结束日期：</label>
+            <input type="date" id="end_date" name="end_date" class="date-input" value="{{ end_date }}" required>
+            <button type="submit" class="submit-btn">查询</button>
+        </form>
+        
+        <!-- 对比曲线图 -->
+        <div class="chart-container">
+            <canvas id="indexComparisonChart"></canvas>
+        </div>
+        
+        <!-- 按年统计表格 -->
+        <div class="table-container">
+            <h2>年度统计</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>年份</th>
+                        <th>沪深300涨幅</th>
+                        <th>沪深300最大回撤</th>
+                        <th>中证500涨幅</th>
+                        <th>中证500最大回撤</th>
+                        <th>中证1000涨幅</th>
+                        <th>中证1000最大回撤</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if yearly_stats %}
+                        {% for year, stats in yearly_stats.items() %}
+                            <tr>
+                                <td>{{ year }}</td>
+                                <td class="number-cell {{ 'positive' if stats.hs300.gain > 0 else 'negative' }}">{{ '%.2f'|format(stats.hs300.gain) }}%</td>
+                                <td class="number-cell negative">{{ '%.2f'|format(stats.hs300.max_drawdown) }}%</td>
+                                <td class="number-cell {{ 'positive' if stats.zz500.gain > 0 else 'negative' }}">{{ '%.2f'|format(stats.zz500.gain) }}%</td>
+                                <td class="number-cell negative">{{ '%.2f'|format(stats.zz500.max_drawdown) }}%</td>
+                                <td class="number-cell {{ 'positive' if stats.zz1000.gain > 0 else 'negative' }}">{{ '%.2f'|format(stats.zz1000.gain) }}%</td>
+                                <td class="number-cell negative">{{ '%.2f'|format(stats.zz1000.max_drawdown) }}%</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #777;">暂无数据</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 准备图表数据
+        const chartData = JSON.parse('{{ chart_data|tojson }}');
+        
+        // 初始化图表
+        function initChart() {
+            const ctx = document.getElementById('indexComparisonChart').getContext('2d');
+            
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [
+                        // 沪深300收盘价
+                        {
+                            label: '沪深300收盘价',
+                            data: chartData.hs300.close,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1,
+                            yAxisID: 'y'
+                        },
+                        // 中证500收盘价
+                        {
+                            label: '中证500收盘价',
+                            data: chartData.zz500.close,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1,
+                            yAxisID: 'y'
+                        },
+                        // 中证1000收盘价
+                        {
+                            label: '中证1000收盘价',
+                            data: chartData.zz1000.close,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    stacked: false,
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: '日期'
+                            },
+                            ticks: {
+                                autoSkip: true,
+                                maxTicksLimit: 10,
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '收盘价'
+                            },
+                            grid: {
+                                drawOnChartArea: true,
+                            },
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x',
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 页面加载完成后初始化图表
+        window.addEventListener('load', initChart);
+    </script>
+</body>
+</html>

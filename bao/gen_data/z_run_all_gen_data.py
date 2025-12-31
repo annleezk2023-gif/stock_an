@@ -40,8 +40,20 @@ if __name__ == '__main__':
         #2
         logger.info("计算pe分位值等开始")
         import b_trade_pe1year_dividend
-        for divide_table_num in range(0, 10, 1):
-            b_trade_pe1year_dividend.gen_pe_data(divide_table_num, conn)
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        # 使用多线程执行任务
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            # 提交任务
+            futures = {executor.submit(b_trade_pe1year_dividend.gen_pe_data, divide_table_num, conn): divide_table_num for divide_table_num in range(0, 10, 1)}
+            
+            # 等待所有任务完成
+            for future in as_completed(futures):
+                divide_table_num = futures[future]
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error(f"处理分表 {divide_table_num} 时出错: {str(e)}")
         logger.info("计算pe分位值等完成")
 
         #3 

@@ -4,7 +4,8 @@ from flask_migrate import Migrate
 from dotenv import load_dotenv
 from sqlalchemy import text
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+import json
 
 # 加载环境变量
 load_dotenv()
@@ -200,14 +201,14 @@ def trade_dates_by_year(year):
 
 
 # 获取股票基本信息查询的通用方法
-def get_stock_basic_query_sql(code_name='', code='', industry='', status='1', tags=None, auto_tags=None, auto_tags_count=None, page=1, per_page=100, do_paginate=True, bukan=None):
+def get_stock_basic_query_sql(code_name='', code='', industry=None, status='1', tags=None, auto_tags=None, auto_tags_count=None, page=1, per_page=100, do_paginate=True, bukan=None):
     """
     使用SQL语句拼接方式构建股票基本信息的查询并支持分页
     
     参数:
     - code_name: 证券名称模糊查询
     - code: 证券代码模糊查询
-    - industry: 行业模糊查询
+    - industry: 行业列表过滤（支持多选）
     - status: 上市状态过滤
     - tags: 标签列表过滤
     - auto_tags: 自动标签列表过滤
@@ -221,6 +222,9 @@ def get_stock_basic_query_sql(code_name='', code='', industry='', status='1', ta
     - do_paginate=False 时返回查询结果列表
     """
     
+    # 初始化industry为列表
+    if industry is None:
+        industry = []
     
     # 基础SQL查询
     base_sql = "SELECT * FROM bao_stock_basic"
@@ -239,10 +243,15 @@ def get_stock_basic_query_sql(code_name='', code='', industry='', status='1', ta
         where_conditions.append("code LIKE :code")
         params["code"] = f"%{code}%"
     
-    # 添加行业模糊查询
+    # 添加行业过滤（支持多选）
     if industry:
-        where_conditions.append("industry LIKE :industry")
-        params["industry"] = f"%{industry}%"
+        # 使用IN查询，更简洁高效
+        # 动态生成占位符，处理MySQL IN查询
+        placeholders = ', '.join([f":industry_{i}" for i in range(len(industry))])
+        where_conditions.append(f"industry IN ({placeholders})")
+        # 添加参数
+        for i, ind in enumerate(industry):
+            params[f"industry_{i}"] = ind
     
     # 添加上市状态过滤
     if status:
@@ -336,7 +345,6 @@ def get_stock_basic_query_sql(code_name='', code='', industry='', status='1', ta
         #转为stock_basic对象
         results = [BaoStockBasic(**dict(item)) for item in results_old]
         # tags, auto_tags从字符串转为json数组
-        import json
         for stock in results:
             stock.tags = json.loads(stock.tags) if stock.tags else []
             stock.auto_tags = json.loads(stock.auto_tags) if stock.auto_tags else []
@@ -374,6 +382,31 @@ def get_stock_basic_query_sql(code_name='', code='', industry='', status='1', ta
         return results
 
 
+# 获取行业列表的API接口
+@app.route('/api/industries')
+def get_industries_api():
+    """
+    获取行业列表的API接口
+    
+    返回:
+    - JSON格式的行业列表
+    """
+    try:
+        industries_list = db.session.execute(
+            text("SELECT DISTINCT industry FROM bao_stock_basic WHERE industry IS NOT NULL AND industry <> '' ORDER BY industry")
+        ).scalars().all()
+        return {
+            'success': True,
+            'data': industries_list,
+            'message': '获取行业列表成功'
+        }
+    except Exception as e:
+        logger.error(f"获取行业列表API失败: {e}")
+        return {
+            'success': False,
+            'data': [],
+            'message': f'获取行业列表失败: {str(e)}'
+        }, 500
 
 
 # 显示所有股票基本信息的页面
@@ -385,7 +418,7 @@ def stock_basic_page():
         per_page = request.args.get('per_page', 100, type=int)
         code_name = request.args.get('code_name', '').strip()
         code = request.args.get('code', '').strip()
-        industry = request.args.get('industry', '').strip()
+        industry = request.args.getlist('industry')
         status = request.args.get('status', '1').strip()  # 默认查询上市股票
         tags = request.args.getlist('tag')  # 获取所有选中的标签
         auto_tags = request.args.getlist('auto_tag')  # 获取所有选中的自动标签
@@ -396,7 +429,7 @@ def stock_basic_page():
         # 确保每页数量是可选的值之一
         if per_page not in [100, 200, 500]:
             per_page = 100
-            
+        
         # 调用通用方法获取分页对象
         pagination = get_stock_basic_query_sql(
             code_name=code_name,
@@ -453,7 +486,7 @@ def stock_basic_page():
         else:
             return render_template('stock_basic.html', stock_basics=stock_basics, pagination=pagination, per_page=per_page)
     except Exception as e:
-        flash('获取股票基本信息失败: ' + str(e))
+        logger.error(f"获取股票基本信息失败: {e}")
         return render_template('stock_basic.html', stock_basics=[], pagination=None, per_page=100)
 
 # 显示所有非股票基本信息的页面
@@ -488,7 +521,6 @@ def nostock_trade_page(code):
             return redirect(url_for('nostock_basic_page'))
         
         # 查询该非股票的所有日K数据，按日期倒序排列，仅查询最近5年的数据
-        from datetime import datetime, timedelta
         five_years_ago = datetime.now() - timedelta(days=3*365)
         trades = BaoNoStockTrade.query.filter_by(code=code).filter(BaoNoStockTrade.date >= five_years_ago).order_by(BaoNoStockTrade.date.desc()).all()
         
@@ -511,19 +543,21 @@ def stock_trade_page(code):
         if not stock:
             flash(f'未找到代码为 {code} 的股票信息')
             return redirect(url_for('stock_basic_page'))
+
+        # 计算日期，默认为系统日期
+        lastTradeDateStr = request.args.get('lastTradeDate', datetime.now().strftime('%Y-%m-%d'))
         
-        # 查询该股票的日K数据
-        # 计算表名
+        # 查询该股票的所有日K数据，按日期倒序排列，仅查询最近3年的数据
         trade_table_name = "bao_stock_trade_" + code[-1]
-        # 查询最近3年的数据
-        sql = f"""SELECT * FROM {trade_table_name} WHERE code = '{code}' and date >= DATE_SUB(NOW(), INTERVAL 3 YEAR) ORDER BY date desc"""
+        sql = f"""SELECT * FROM {trade_table_name} WHERE code = '{code}' and date between DATE_SUB('{lastTradeDateStr}', INTERVAL 3 YEAR) and '{lastTradeDateStr}' ORDER BY date desc"""
         trades = db.session.execute(text(sql)).fetchall()
         
         return render_template('stock_trade.html', 
                              stock_code=code, 
                              stock_name=stock.code_name, 
                              trades=trades, 
-                             total_count=len(trades))
+                             total_count=len(trades),
+                             lastTradeDate=lastTradeDateStr)
     except Exception as e:
         flash(f'获取股票K线数据失败: {str(e)}')
         return redirect(url_for('stock_basic_page'))
@@ -537,7 +571,6 @@ def save_stock_remark(id):
         stock = BaoStockBasic.query.get_or_404(id)
         
         # 获取请求数据
-        import json
         data = request.get_json()
         if not data or 'remark' not in data:
             return json.dumps({'success': False, 'message': '无效的请求数据'}), 400
@@ -571,7 +604,6 @@ def save_stock_tags(id):
         stock = BaoStockBasic.query.get_or_404(id)
         
         # 获取请求数据
-        import json
         data = request.get_json()
         if not data or 'tags' not in data:
             return json.dumps({'success': False, 'message': '无效的请求数据'}), 400
@@ -607,7 +639,6 @@ def save_nostock_remark(id):
         nostock = BaoNoStockBasic.query.get_or_404(id)
         
         # 获取请求数据
-        import json
         data = request.get_json()
         if not data or 'remark' not in data:
             return json.dumps({'success': False, 'message': '无效的请求数据'}), 400
@@ -634,7 +665,6 @@ def save_nostock_remark(id):
 def save_nostock_tags(id):
     try:
         # 从请求中获取标签数据
-        import json
         data = request.get_json()
         if not data or 'tags' not in data:
             return json.dumps({'success': False, 'message': '无效的请求数据'}), 400
@@ -669,7 +699,6 @@ def save_nostock_tags(id):
 @app.route('/save_pe_values', methods=['POST'])
 def save_pe_values():
     try:
-        import json
         data = request.get_json()
         code = data.get('code')
         
@@ -691,6 +720,158 @@ def save_pe_values():
         db.session.rollback()
         logger.error(f"保存PE值时发生错误: {str(e)}")
         return json.dumps({'success': False, 'error': str(e)}), 500
+
+# 定义指数代码常量
+INDEX_CODES = {
+    'hs300': 'sh.000300',  # 沪深300
+    'zz500': 'sh.000905',  # 中证500
+    'zz1000': 'sh.000852'  # 中证1000
+}
+
+# 计算年度涨幅和最大回撤
+def calculate_yearly_stats(data):
+    if not data:
+        return {}
+    
+    stats = {}
+    yearly_data = {}
+    
+    # 按年份分组数据
+    for item in data:
+        year = item.date.strftime('%Y')
+        if year not in yearly_data:
+            yearly_data[year] = []
+        yearly_data[year].append(item)
+    
+    # 计算每年的涨幅和最大回撤
+    for year, year_data in yearly_data.items():
+        if not year_data:
+            continue
+        
+        # 按日期排序
+        year_data.sort(key=lambda x: x.date)
+        
+        # 计算涨幅：(年末收盘价 - 年初收盘价) / 年初收盘价 * 100
+        start_close = year_data[0].close
+        end_close = year_data[-1].close
+        gain = (end_close - start_close) / start_close * 100
+        
+        # 计算最大回撤：(年度最低收盘价 - 年初收盘价) / 年初收盘价 * 100
+        # 找到年度最低收盘价
+        min_close = min(item.close for item in year_data)
+        # 计算最大回撤，结果应为负数
+        max_drawdown = (min_close - start_close) / start_close * 100
+        
+        stats[year] = {
+            'gain': gain,
+            'max_drawdown': max_drawdown
+        }
+    
+    return stats
+
+# 指数对比页面
+@app.route('/stock_index_trade', methods=['GET', 'POST'])
+def stock_index_trade():
+    from datetime import datetime, timedelta
+    
+    # 默认日期范围：最近一年
+    end_date = datetime.now().strftime('%Y-%m-%d')
+    start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+    
+    if request.method == 'POST':
+        # 从表单获取日期范围
+        start_date = request.form.get('start_date', start_date)
+        end_date = request.form.get('end_date', end_date)
+    
+    # 查询三个指数的数据
+    try:
+        # 转换日期格式
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+        
+        # 查询所有数据
+        all_data = {}
+        for name, code in INDEX_CODES.items():
+            data = BaoNoStockTrade.query.filter(
+                BaoNoStockTrade.code == code,
+                BaoNoStockTrade.date >= start_dt,
+                BaoNoStockTrade.date <= end_dt
+            ).order_by(BaoNoStockTrade.date).all()
+            all_data[name] = data
+        
+        # 准备图表数据
+        chart_data = {
+            'labels': [],
+            'hs300': {'close': [], 'amount': []},
+            'zz500': {'close': [], 'amount': []},
+            'zz1000': {'close': [], 'amount': []}
+        }
+        
+        # 获取所有日期
+        dates = set()
+        for name, data in all_data.items():
+            for item in data:
+                dates.add(item.date)
+        
+        # 按日期排序
+        sorted_dates = sorted(dates)
+        chart_data['labels'] = [date.strftime('%Y-%m-%d') for date in sorted_dates]
+        
+        # 为每个指数填充数据
+        for name, data in all_data.items():
+            # 创建日期到数据的映射
+            data_map = {item.date: item for item in data}
+            
+            # 填充数据，缺失日期用None
+            for date in sorted_dates:
+                if date in data_map:
+                    chart_data[name]['close'].append(data_map[date].close)
+                    # 成交额转换为亿
+                    chart_data[name]['amount'].append(data_map[date].amount / 100000000 if data_map[date].amount else 0)
+                else:
+                    chart_data[name]['close'].append(None)
+                    chart_data[name]['amount'].append(None)
+        
+        # 计算年度统计数据
+        yearly_stats = {}
+        for year in sorted(set(date.strftime('%Y') for date in sorted_dates)):
+            yearly_stats[year] = {
+                'hs300': calculate_yearly_stats([item for item in all_data['hs300'] if item.date.strftime('%Y') == year]),
+                'zz500': calculate_yearly_stats([item for item in all_data['zz500'] if item.date.strftime('%Y') == year]),
+                'zz1000': calculate_yearly_stats([item for item in all_data['zz1000'] if item.date.strftime('%Y') == year])
+            }
+        
+        # 处理年度统计数据的格式
+        formatted_yearly_stats = {}
+        for year, stats in yearly_stats.items():
+            formatted_yearly_stats[year] = {
+                'hs300': {
+                    'gain': stats['hs300'].get(year, {}).get('gain', 0),
+                    'max_drawdown': stats['hs300'].get(year, {}).get('max_drawdown', 0)
+                },
+                'zz500': {
+                    'gain': stats['zz500'].get(year, {}).get('gain', 0),
+                    'max_drawdown': stats['zz500'].get(year, {}).get('max_drawdown', 0)
+                },
+                'zz1000': {
+                    'gain': stats['zz1000'].get(year, {}).get('gain', 0),
+                    'max_drawdown': stats['zz1000'].get(year, {}).get('max_drawdown', 0)
+                }
+            }
+        
+        return render_template('stock_index_trade.html', 
+                              start_date=start_date, 
+                              end_date=end_date,
+                              chart_data=chart_data,
+                              yearly_stats=formatted_yearly_stats)
+    
+    except Exception as e:
+        logger.error(f"查询指数数据时发生错误: {str(e)}")
+        return render_template('stock_index_trade.html', 
+                              start_date=start_date, 
+                              end_date=end_date,
+                              chart_data={'labels': [], 'hs300': {'close': [], 'amount': []}, 'zz500': {'close': [], 'amount': []}, 'zz1000': {'close': [], 'amount': []}},
+                              yearly_stats={})
 
 # 运行应用
 if __name__ == '__main__':
