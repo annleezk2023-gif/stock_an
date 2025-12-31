@@ -1,0 +1,230 @@
+/* 全局样式 */
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f5f5f5;
+}
+h1 {
+    color: #333;
+    text-align: center;
+    margin-bottom: 20px;
+}
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+/* 表格样式 */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+}
+th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* 分页样式 */
+.pagination {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.pagination a {
+    margin: 0 5px;
+    padding: 5px 10px;
+    text-decoration: none;
+    border: 1px solid #ddd;
+    color: #333;
+    border-radius: 3px;
+}
+.pagination a.active {
+    background-color: #4CAF50;
+    color: white;
+    border: 1px solid #4CAF50;
+}
+
+/* 标签样式 */
+.tag {
+    display: inline-block;
+    padding: 3px 8px;
+    margin: 2px;
+    border-radius: 3px;
+    font-size: 12px;
+    background-color: #e7f3fe;
+    color: #31708f;
+}
+
+/* 搜索表单样式 */
+.search-form {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+.search-form input, .search-form select {
+    margin-right: 10px;
+    padding: 5px;
+}
+.search-form button {
+    padding: 5px 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+/* 返回首页链接样式 */
+.back-link {
+    margin-top: 20px;
+    text-align: center;
+}
+.back-link a {
+    color: #4CAF50;
+    text-decoration: none;
+}
+
+/* 排序图标样式 */
+.sort-icon {
+    font-size: 12px;
+    margin-left: 5px;
+    transition: transform 0.2s;
+}
+.sort-asc {
+    transform: rotate(-180deg);
+}
+.sort-desc {
+    transform: rotate(0deg);
+}
+
+/* 数字格式化样式 */
+.number-cell {
+    text-align: right;
+}
+
+/* 链接样式 */
+.code-link {
+    color: #4CAF50;
+    text-decoration: none;
+}
+.code-link:hover {
+    text-decoration: underline;
+}
+
+/* 每页显示数量选择器样式 */
+.page-size-selector {
+    margin-bottom: 15px;
+}
+
+/* 按钮样式 */
+.add-btn {
+    display: inline-block;
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    margin-right: 10px;
+}
+.add-btn:hover {
+    background-color: #45a049;
+}
+
+/* 消息提示样式 */
+.flash-message {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #c8e6c9;
+}
+
+/* 非股票页面特有样式 */
+.nostock-page th {
+    background-color: #2196F3;
+    color: white;
+}
+
+.nostock-page .pagination a {
+    color: #2196F3;
+    padding: 8px 16px;
+    text-decoration: none;
+    border: 1px solid #ddd;
+    margin: 0 4px;
+    border-radius: 4px;
+}
+
+.nostock-page .pagination a.active {
+    background-color: #2196F3;
+    color: white;
+    border: 1px solid #2196F3;
+}
+
+.nostock-page .pagination a:hover:not(.active) {
+    background-color: #ddd;
+}
+
+.nostock-page .page-size-selector {
+    margin-bottom: 20px;
+    text-align: right;
+}
+
+.nostock-page .page-size-selector select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+/* 交易日页面特有样式 */
+.trade-dates-page .count-link {
+    color: #2196F3;
+    text-decoration: none;
+}
+
+.trade-dates-page .count-link:hover {
+    text-decoration: underline;
+}
+
+.trade-dates-page .back-link {
+    display: inline-block;
+    background-color: #555;
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.trade-dates-page .back-link:hover {
+    background-color: #777;
+}
+
+/* 错误消息样式 */
+.error-message {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    background-color: #ffebee;
+    color: #c62828;
+    border: 1px solid #ffcdd2;
+}
