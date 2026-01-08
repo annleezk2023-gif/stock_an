@@ -1,0 +1,271 @@
+{% extends "stock_common.html" %}
+{% set action_url = "/fund_ana" %}
+{% block content %}
+        <!-- 数据表格 -->
+        <table>
+            <!-- 表格列标题行 -->
+            <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th>行业</th>
+                    <th>TOP股票</th>
+                    <th>标签</th>
+                    <th class="number-cell">PE分位</th>
+                    <th>备注</th>
+                    <th>风险备注</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+
+            <!-- 表格数据行 -->
+            <tbody id="fundTableBody">
+                {% if fund_anas %}
+                    {% for fund in fund_anas %}
+                        <tr>
+                            <td>{{ fund.industry }}</td>
+                            <td>
+                                {% if fund.top_stock %}
+                                    <strong>TOP股票：</strong><br/>
+                                    {% set codes = fund.top_stock.split(',') %}
+                                    {% for code in codes %}
+                                        {% set stock_info = stock_dict.get(code) %}
+                                        {% if stock_info %}
+                                            <a href="/stock_trade/{{ code }}" target="_blank">{{ stock_info.code_name }}</a>{% if not loop.last %}, {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                                {% if fund.growth_stock %}
+                                    <br/><br/><strong>成长型股票：</strong><br/>
+                                    {% set growth_codes = fund.growth_stock.split(',') %}
+                                    {% for code in growth_codes %}
+                                        {% set stock_info = stock_dict.get(code) %}
+                                        {% if stock_info %}
+                                            <a href="/stock_trade/{{ code }}" target="_blank">{{ stock_info.code_name }}</a>{% if not loop.last %}, {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                                {% if fund.fenghong_stock %}
+                                    <br/><br/><strong>分红型股票：</strong><br/>
+                                    {% set fenghong_codes = fund.fenghong_stock.split(',') %}
+                                    {% for code in fenghong_codes %}
+                                        {% set stock_info = stock_dict.get(code) %}
+                                        {% if stock_info %}
+                                            <a href="/stock_trade/{{ code }}" target="_blank">{{ stock_info.code_name }}</a>{% if not loop.last %}, {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if fund.sort_tag %}
+                                    {% if fund.sort_tag == 3 %}
+                                        <span style="background-color: #FF5722; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">3重点</span>
+                                    {% elif fund.sort_tag == 2 %}
+                                        <span style="background-color: #FF9800; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">2观察</span>
+                                    {% elif fund.sort_tag == 1 %}
+                                        <span style="background-color: #9E9E9E; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">1不看</span>
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                ------ PE分位 ------<br/>
+                                1年
+                                {% if fund.pe_year_1_percent %}
+                                    {% if fund.pe_year_1_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.pe_year_1_percent) }}%</span>
+                                    {% elif fund.pe_year_1_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.pe_year_1_percent) }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(fund.pe_year_1_percent) }}%
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                                {% if fund.pe_year_3_percent %}
+                                    <br/>3年
+                                    {% if fund.pe_year_3_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.pe_year_3_percent) }}%</span>
+                                    {% elif fund.pe_year_3_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.pe_year_3_percent) }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(fund.pe_year_3_percent) }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if fund.pe_year_5_percent %}
+                                    <br/>5年
+                                    {% if fund.pe_year_5_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.pe_year_5_percent) }}%</span>
+                                    {% elif fund.pe_year_5_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.pe_year_5_percent) }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(fund.pe_year_5_percent) }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if fund.pe_year_10_percent %}
+                                    <br/>10年
+                                    {% if fund.pe_year_10_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.pe_year_10_percent) }}%</span>
+                                    {% elif fund.pe_year_10_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.pe_year_10_percent) }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(fund.pe_year_10_percent) }}%
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div style="word-wrap: break-word;">
+                                    {{ fund.remark or '' }}
+                                </div>
+                            </td>
+                            <td>
+                                <div style="word-wrap: break-word; color: red;">
+                                    {{ fund.risk_memo or '' }}
+                                </div>
+                            </td>
+                            <td>
+                                <button onclick="editFund({{ fund.id }}, '{{ fund.industry }}')" data-sort-tag="{{ fund.sort_tag }}" data-remark="{{ fund.remark or '' }}" data-risk-memo="{{ fund.risk_memo or '' }}" style="background-color: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; display: block;">编辑</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 20px;">暂无数据</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    
+    <!-- 编辑弹窗 -->
+    <div id="fundModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background-color: white; padding: 20px; border-radius: 8px; width: 500px; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
+            <h2>编辑行业 - <span id="modalIndustryName"></span></h2>
+            <input type="hidden" id="modalFundId">
+            
+            <div style="margin: 20px 0;">
+                <p>排序标签：</p>
+                <div id="sortTags" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                        <input type="radio" name="sort_tag" value="3" style="margin-right: 5px;">3重点
+                    </label>
+                    <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                        <input type="radio" name="sort_tag" value="2" style="margin-right: 5px;">2观察
+                    </label>
+                    <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                        <input type="radio" name="sort_tag" value="1" style="margin-right: 5px;">1不看
+                    </label>
+                    <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
+                        <input type="radio" name="sort_tag" value="0" style="margin-right: 5px;">无
+                    </label>
+                </div>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <p>备注：</p>
+                <textarea id="modalRemark" rows="4" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" maxlength="1000"></textarea>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <p>风险备注：</p>
+                <input type="text" id="modalRiskMemo" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" maxlength="200">
+            </div>
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button onclick="saveFund()" style="background-color: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px;">保存</button>
+                <button onclick="closeModal()" style="background-color: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 编辑行业信息
+        function editFund(fundId, industryName) {
+            document.getElementById('modalFundId').value = fundId;
+            document.getElementById('modalIndustryName').textContent = industryName;
+            
+            // 获取当前数据
+            const row = document.querySelector(`button[onclick*="${fundId}"]`).closest('tr');
+            const sortTag = row.querySelector('td:nth-child(3)').textContent.trim();
+            const remark = row.querySelector('button').dataset.remark;
+            const riskMemo = row.querySelector('button').dataset.riskMemo;
+            
+            // 设置排序标签
+            const sortTagRadios = document.querySelectorAll('input[name="sort_tag"]');
+            sortTagRadios.forEach(radio => {
+                radio.checked = false;
+            });
+            
+            if (sortTag.includes('3重点')) {
+                document.querySelector('input[name="sort_tag"][value="3"]').checked = true;
+            } else if (sortTag.includes('2观察')) {
+                document.querySelector('input[name="sort_tag"][value="2"]').checked = true;
+            } else if (sortTag.includes('1不看')) {
+                document.querySelector('input[name="sort_tag"][value="1"]').checked = true;
+            }
+            
+            // 设置备注
+            document.getElementById('modalRemark').value = remark || '';
+            document.getElementById('modalRiskMemo').value = riskMemo || '';
+            
+            // 显示弹窗
+            document.getElementById('fundModal').style.display = 'flex';
+        }
+        
+        // 保存行业信息
+        function saveFund() {
+            const fundId = document.getElementById('modalFundId').value;
+            const sortTagRadio = document.querySelector('input[name="sort_tag"]:checked');
+            const sortTag = sortTagRadio ? parseInt(sortTagRadio.value) : null;
+            const remark = document.getElementById('modalRemark').value;
+            const riskMemo = document.getElementById('modalRiskMemo').value;
+            
+            // 验证备注长度
+            if (remark.length > 1000) {
+                alert('备注不能超过1000个文字');
+                return;
+            }
+            if (riskMemo.length > 200) {
+                alert('风险备注不能超过200个文字');
+                return;
+            }
+            
+            // 发送保存请求
+            fetch(`/fund_ana/save/${fundId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sort_tag: sortTag,
+                    remark: remark,
+                    risk_memo: riskMemo
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeModal();
+                    location.reload();
+                } else {
+                    alert('保存失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('保存失败: ' + error);
+            });
+        }
+        
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('fundModal').style.display = 'none';
+        }
+        
+        // 点击弹窗外部关闭
+        document.getElementById('fundModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+{% endblock %}

@@ -1,8 +1,6 @@
 import sys
 import os
 from sqlalchemy import text
-import json
-import datetime
 
 # 配置logger
 import logging

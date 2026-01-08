@@ -34,14 +34,10 @@ def update_stock_auto_tags(cur_auto_tags, conn = None):
         if stock_codes is None or len(stock_codes) < 1:
             continue
 
-        # 清空原来的自动标签内容
+        # 清空原来的自动标签内容（移除特定标签）
         sql = f"""UPDATE bao_stock_basic 
-                    SET auto_tags = JSON_REMOVE(auto_tags, 
-                        JSON_UNQUOTE(
-                            JSON_SEARCH(auto_tags, 'one', '{cur_tag}')
-                        )
-                    )
-                    WHERE JSON_SEARCH(auto_tags, 'one', '{cur_tag}') IS NOT NULL"""
+                    SET auto_tags = TRIM(BOTH ',' FROM REPLACE(CONCAT(',', auto_tags, ','), ',{cur_tag},', ', ','))
+                    WHERE auto_tags LIKE '%{cur_tag}%'"""
         results = conn.execute(text(sql))
         conn.commit()  # 提交连接层面的事务
         logger.info(f"成功清空{results.rowcount}个股票自动标签中的{cur_tag}")
@@ -65,18 +61,27 @@ def update_stock_auto_tags(cur_auto_tags, conn = None):
                 continue
 
             # 使用连接的commit方法提交直接执行的SQL语句
-            sql = f"""UPDATE bao_stock_basic 
-                SET auto_tags = JSON_ARRAY_APPEND(COALESCE(auto_tags, '[]'), '$', '{cur_tag}')
-                WHERE id = {stock.id}"""
-            conn.execute(text(sql))
-            conn.commit()  # 提交连接层面的事务
+            # 获取当前auto_tags并添加新标签
+            current_tags = [tag.strip() for tag in stock.auto_tags.split(',')] if stock.auto_tags else []
+            if cur_tag not in current_tags:
+                current_tags.append(cur_tag)
+                current_tags.sort()
+                new_tags_str = ','.join(current_tags)
+                
+                sql = f"""UPDATE bao_stock_basic 
+                    SET auto_tags = '{new_tags_str}'
+                    WHERE id = {stock.id}"""
+                conn.execute(text(sql))
+                conn.commit()  # 提交连接层面的事务
 
-            # 再查一次
-            sql = f"SELECT * FROM bao_stock_basic WHERE id = {stock.id}"
-            stock = conn.execute(text(sql)).fetchone()
+                # 再查一次
+                sql = f"SELECT * FROM bao_stock_basic WHERE id = {stock.id}"
+                stock = conn.execute(text(sql)).fetchone()
 
-            logger.info(f"更新股票{stock.code}自动标签为{stock.auto_tags}")
-            stock_count += 1
+                logger.info(f"更新股票{stock.code}自动标签为{stock.auto_tags}")
+                stock_count += 1
+            else:
+                logger.debug(f"股票{stock.code}已存在标签{cur_tag}，跳过")
             
     
         logger.info(f"成功更新{stock_count}个股票自动标签中的{cur_tag}")

@@ -215,14 +215,14 @@ class TradeStrategy():
             stock_auto_tags = get_stock_tags_by_trade_date(conn, stock_info.code, self.cur_trade_date_str, tag_type=2)
             if stock_auto_tags:
                 if stock_auto_tags.bao_tags_loss:
-                    #转jsonarray
-                    bao_tags_loss = json.loads(stock_auto_tags.bao_tags_loss)
+                    # 转为列表
+                    bao_tags_loss = [tag.strip() for tag in stock_auto_tags.bao_tags_loss.split(',')] if stock_auto_tags.bao_tags_loss else []
                     if len(bao_tags_loss) > 0: #有负面标签
                         self.stock_info_list.remove(stock_info)
                         continue
                 if stock_auto_tags.bao_tags_positive:
-                    #转jsonarray
-                    bao_tags_positive = json.loads(stock_auto_tags.bao_tags_positive)
+                    # 转为列表
+                    bao_tags_positive = [tag.strip() for tag in stock_auto_tags.bao_tags_positive.split(',')] if stock_auto_tags.bao_tags_positive else []
                     if len(bao_tags_positive) > 0: #有正面标签
                         has_fenghong_tag = True
                         break

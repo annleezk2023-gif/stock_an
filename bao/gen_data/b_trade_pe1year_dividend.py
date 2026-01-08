@@ -29,7 +29,7 @@ def get_stock_trade_total(table_name, conn):
     return results[0]
 
 def update_stock_total_market_value(table_name, conn):
-    sql = f"""update {table_name} set total_market_value = amount/turn*100/10000/10000 where total_market_value is null"""
+    sql = f"""update {table_name} set total_market_value = amount/turn*100/10000/10000 where total_market_value is null and turn > 0"""
     conn.execute(text(sql))
     conn.commit()
 
@@ -139,6 +139,13 @@ def get_pepspbpcf_percent(cur_table_name, cur_code, cur_date_str, cur_year_num, 
 
 # 补充分析数据
 def gen_pe_data(divide_table_num=0, conn=None):
+    
+    # 如果没有传入连接，创建新连接
+    own_conn = False
+    if conn is None:
+        import stock_common
+        conn = stock_common.get_db_conn(sql_echo=False)
+        own_conn = True
 
     # 获取pe为空的数据
     cur_table_name = f"""bao_stock_trade_{divide_table_num}"""
@@ -167,6 +174,10 @@ def gen_pe_data(divide_table_num=0, conn=None):
         conn.commit()
         done_count += len(trade_data_list)
         logger.info(f"执行结束: {divide_table_num}表，己处理 {done_count} / {total_count}, {trade_data_list[0].id} {trade_data_list[0].code} {trade_data_list[0].date}")
+    
+    # 如果是自己创建的连接，关闭它
+    if own_conn:
+        conn.close()
 
 
 if __name__ == "__main__":

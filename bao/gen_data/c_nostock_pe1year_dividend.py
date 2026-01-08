@@ -29,7 +29,7 @@ def get_stock_trade_total(table_name, conn):
     return results[0]
 
 def update_stock_total_market_value(table_name, conn):
-    sql = f"""update {table_name} set total_market_value = amount/turn*100/10000/10000 where total_market_value is null"""
+    sql = f"""update {table_name} set total_market_value = amount/turn*100/10000/10000 where total_market_value is null and turn > 0"""
     conn.execute(text(sql))
     conn.commit()
 

@@ -14,7 +14,7 @@ import baostock_common
 
 # 配置logger
 import logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
@@ -44,8 +44,8 @@ if __name__ == '__main__':
         
         # 使用多线程执行任务
         with ThreadPoolExecutor(max_workers=10) as executor:
-            # 提交任务
-            futures = {executor.submit(b_trade_pe1year_dividend.gen_pe_data, divide_table_num, conn): divide_table_num for divide_table_num in range(0, 10, 1)}
+            # 提交任务 - 不传递conn参数，让每个线程自己创建
+            futures = {executor.submit(b_trade_pe1year_dividend.gen_pe_data, divide_table_num): divide_table_num for divide_table_num in range(0, 10, 1)}
             
             # 等待所有任务完成
             for future in as_completed(futures):

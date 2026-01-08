@@ -70,7 +70,7 @@ def incremental_update_trade_dates(conn=None):
         # 否则从最新日期的下一天开始获取
         start_date = (latest_date[0] + timedelta(days=1))
     
-    end_date = date(2025, 12, 31)
+    end_date = date(2026, 12, 31)
     
     # 检查是否需要更新
     if start_date > end_date:

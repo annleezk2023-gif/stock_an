@@ -1,0 +1,360 @@
+CREATE TABLE `bao_trade_date` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `calendar_date` date DEFAULT NULL COMMENT '日历日期，格式：YYYY-MM-DD',
+  `is_trading_day` tinyint(4) DEFAULT NULL COMMENT '是否为交易日，1：是，0：否',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `calendar_date` (`calendar_date`)
+) ENGINE=InnoDB AUTO_INCREMENT=7328 DEFAULT CHARSET=utf8mb4 COMMENT='交易日历表';
+
+CREATE TABLE `ak_fund_basic` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `fd_code` varchar(20) NOT NULL COMMENT '基金代码',
+  `fd_name` varchar(100) NOT NULL COMMENT '基金名称',
+  `fd_full_name` varchar(255) DEFAULT NULL COMMENT '基金全称',
+  `found_date` date DEFAULT NULL COMMENT '成立时间',
+  `totshare` decimal(18,2) DEFAULT NULL COMMENT '最新规模(单位:亿元)',
+  `keeper_name` varchar(100) DEFAULT NULL COMMENT '基金公司',
+  `manager_name` varchar(100) DEFAULT NULL COMMENT '基金经理',
+  `trup_name` varchar(100) DEFAULT NULL COMMENT '托管银行',
+  `type_desc` varchar(50) DEFAULT NULL COMMENT '基金类型',
+  `rating_source` varchar(50) DEFAULT NULL COMMENT '评级机构',
+  `rating_desc` varchar(20) DEFAULT NULL COMMENT '基金评级',
+  `invest_orientation` text COMMENT '投资策略',
+  `invest_target` text COMMENT '投资目标',
+  `performance_bench_mark` text COMMENT '业绩比较基准',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_fd_code` (`fd_code`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=43739 DEFAULT CHARSET=utf8mb4 COMMENT='基金基本信息';
+
+
+CREATE TABLE `fund_ana` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `industry` varchar(100) DEFAULT NULL COMMENT '所属行业',
+  `all_stock` text DEFAULT NULL COMMENT '行业全部股票的代码',
+  `top_stock` varchar(100) DEFAULT NULL COMMENT '行业TOP10股票的代码',
+  `growth_stock` varchar(1000) DEFAULT NULL COMMENT '成长型股票',
+  `fenghong_stock` varchar(1000) DEFAULT NULL COMMENT '分红型股票',
+  `sort_tag` int(1) DEFAULT NULL COMMENT '排序标签，可选值：3重点、2观察、1不看',
+  `remark` varchar(1000) DEFAULT NULL COMMENT '备注字段，最多1000个文字',
+  `risk_memo` varchar(200) DEFAULT NULL COMMENT '风险备注',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `pe_year_1_percent` decimal(5,2) DEFAULT NULL COMMENT '1年PE分位值',
+  `pe_year_3_percent` decimal(5,2) DEFAULT NULL COMMENT '3年PE分位值',
+  `pe_year_5_percent` decimal(5,2) DEFAULT NULL COMMENT '5年PE分位值',
+  `pe_year_10_percent` decimal(5,2) DEFAULT NULL COMMENT '10年PE分位值',
+  `top_etf` varchar(100) DEFAULT NULL COMMENT '行业TOP ETF的代码',
+  `etf_year_1_percent` decimal(5,2) DEFAULT NULL COMMENT '1年point分位值',
+  `etf_year_3_percent` decimal(5,2) DEFAULT NULL COMMENT '3年point分位值',
+  `etf_year_5_percent` decimal(5,2) DEFAULT NULL COMMENT '5年point分位值',
+  `etf_year_10_percent` decimal(5,2) DEFAULT NULL COMMENT '10年point分位值',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_industry` (`industry`)
+) ENGINE=InnoDB AUTO_INCREMENT=249 DEFAULT CHARSET=utf8mb4 COMMENT='行业分析表';
+
+
+CREATE TABLE `bao_nostock_basic` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `code` varchar(20) DEFAULT NULL COMMENT '证券代码',
+  `code_name` varchar(100) DEFAULT NULL COMMENT '证券名称',
+  `ipo_date` date DEFAULT NULL COMMENT '上市日期',
+  `out_date` date DEFAULT NULL COMMENT '退市日期',
+  `type` varchar(50) DEFAULT NULL COMMENT '证券类型，1：股票，2：指数，3：其它，4：可转债，5：ETF',
+  `status` varchar(20) DEFAULT NULL COMMENT '上市状态，1：上市，0：退市',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `tags` varchar(100) DEFAULT NULL COMMENT '标签，逗号分隔的字符串，可选值：观察、量化、不看',
+  `remark` varchar(1000) DEFAULT NULL COMMENT '备注字段，最多1000个文字',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=1665 DEFAULT CHARSET=utf8mb4 COMMENT='证券基本资料表 - 非股票类型';
+
+
+CREATE TABLE `bao_nostock_trade` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `code` varchar(20) DEFAULT NULL COMMENT '证券代码',
+  `date` date DEFAULT NULL COMMENT '交易日期，格式：YYYY-MM-DD',
+  `open` float DEFAULT NULL COMMENT '开盘价',
+  `high` float DEFAULT NULL COMMENT '最高价',
+  `low` float DEFAULT NULL COMMENT '最低价',
+  `close` float DEFAULT NULL COMMENT '收盘价',
+  `preclose` float DEFAULT NULL COMMENT '前收盘价',
+  `volume` bigint(20) DEFAULT NULL COMMENT '成交量，单位：股',
+  `amount` float DEFAULT NULL COMMENT '成交额，单位：元',
+  `adjustflag` int(11) DEFAULT NULL COMMENT '复权状态，1：后复权，0：不复权',
+  `turn` float DEFAULT NULL COMMENT '换手率，百分比',
+  `tradestatus` int(11) DEFAULT NULL COMMENT '交易状态，1：正常，0：停牌',
+  `pctChg` float DEFAULT NULL COMMENT '涨跌幅，百分比',
+  `peTTM` float DEFAULT NULL COMMENT '滚动市盈率',
+  `pbMRQ` float DEFAULT NULL COMMENT '市净率',
+  `psTTM` float DEFAULT NULL COMMENT '滚动市销率',
+  `pcfNcfTTM` float DEFAULT NULL COMMENT '滚动市现率',
+  `isST` int(11) DEFAULT NULL COMMENT 'ST标识，1：是，0：否',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_code_date` (`code`,`date`)
+) ENGINE=InnoDB AUTO_INCREMENT=2121792 DEFAULT CHARSET=utf8mb4 COMMENT='非股票K线数据表';
+
+
+
+
+
+
+
+
+CREATE TABLE `bao_stock_basic` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `code` varchar(20) DEFAULT NULL COMMENT '证券代码',
+  `code_name` varchar(100) DEFAULT NULL COMMENT '证券名称',
+  `ipo_date` date DEFAULT NULL COMMENT '上市日期',
+  `out_date` date DEFAULT NULL COMMENT '退市日期',
+  `type` varchar(50) DEFAULT NULL COMMENT '证券类型，1：股票，2：指数，3：其它，4：可转债，5：ETF',
+  `status` varchar(20) DEFAULT NULL COMMENT '上市状态，1：上市，0：退市',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `tags` varchar(100) DEFAULT NULL COMMENT '标签，逗号分隔的字符串，可选值：观察、量化、不看',
+  `auto_tags` varchar(100) DEFAULT NULL,
+  `remark` varchar(1000) DEFAULT NULL COMMENT '备注字段，最多1000个文字',
+  `industry` varchar(100) DEFAULT NULL COMMENT '所属行业',
+  `industryClassification` varchar(100) DEFAULT NULL COMMENT '所属行业类别',
+  `risk_memo` varchar(200) DEFAULT NULL COMMENT '风险备注',
+  `trade_score` int(2) DEFAULT NULL COMMENT '公司打分，用于量化交易；-1表示黑名单',
+  `trade_score_reason` varchar(1000) DEFAULT NULL COMMENT '公司打分的原因',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=5481 DEFAULT CHARSET=utf8mb4 COMMENT='证券基本资料表 - 股票类型';
+
+
+CREATE TABLE `bao_stock_trade_0` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `code` varchar(20) DEFAULT NULL COMMENT '证券代码',
+  `date` date DEFAULT NULL COMMENT '交易日期，格式：YYYY-MM-DD',
+  `open` float DEFAULT NULL COMMENT '开盘价',
+  `high` float DEFAULT NULL COMMENT '最高价',
+  `low` float DEFAULT NULL COMMENT '最低价',
+  `close` float DEFAULT NULL COMMENT '收盘价',
+  `preclose` float DEFAULT NULL COMMENT '前收盘价',
+  `volume` bigint(20) DEFAULT NULL COMMENT '成交量，单位：股',
+  `amount` float DEFAULT NULL COMMENT '成交额，单位：元',
+  `adjustflag` int(11) DEFAULT NULL COMMENT '复权状态，1：后复权，0：不复权',
+  `turn` float DEFAULT NULL COMMENT '换手率，百分比',
+  `tradestatus` int(11) DEFAULT NULL COMMENT '交易状态，1：正常，0：停牌',
+  `pctChg` float DEFAULT NULL COMMENT '涨跌幅，百分比',
+  `peTTM` float DEFAULT NULL COMMENT '滚动市盈率',
+  `pbMRQ` float DEFAULT NULL COMMENT '市净率',
+  `psTTM` float DEFAULT NULL COMMENT '滚动市销率',
+  `pcfNcfTTM` float DEFAULT NULL COMMENT '滚动市现率',
+  `isST` int(11) DEFAULT NULL COMMENT 'ST标识，1：是，0：否',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `pe_year_1_percent` decimal(5,2) DEFAULT NULL COMMENT '1年PE分位值',
+  `pe_year_3_percent` decimal(5,2) DEFAULT NULL COMMENT '3年PE分位值',
+  `pe_year_5_percent` decimal(5,2) DEFAULT NULL COMMENT '5年PE分位值',
+  `pe_year_10_percent` decimal(5,2) DEFAULT NULL COMMENT '10年PE分位值',
+  `pb_year_1_percent` decimal(5,2) DEFAULT NULL COMMENT '1年pb分位值',
+  `pb_year_3_percent` decimal(5,2) DEFAULT NULL COMMENT '3年pb分位值',
+  `pb_year_5_percent` decimal(5,2) DEFAULT NULL COMMENT '5年pb分位值',
+  `pb_year_10_percent` decimal(5,2) DEFAULT NULL COMMENT '10年pb分位值',
+  `ps_year_1_percent` decimal(5,2) DEFAULT NULL COMMENT '1年ps分位值',
+  `ps_year_3_percent` decimal(5,2) DEFAULT NULL COMMENT '3年ps分位值',
+  `ps_year_5_percent` decimal(5,2) DEFAULT NULL COMMENT '5年ps分位值',
+  `ps_year_10_percent` decimal(5,2) DEFAULT NULL COMMENT '10年ps分位值',
+  `pcf_year_1_percent` decimal(5,2) DEFAULT NULL COMMENT '1年pcf分位值',
+  `pcf_year_3_percent` decimal(5,2) DEFAULT NULL COMMENT '3年pcf分位值',
+  `pcf_year_5_percent` decimal(5,2) DEFAULT NULL COMMENT '5年pcf分位值',
+  `pcf_year_10_percent` decimal(5,2) DEFAULT NULL COMMENT '10年pcf分位值',
+  `stock_fenghong_percent` float DEFAULT NULL COMMENT '股息率',
+  `turn_percent_5` float DEFAULT NULL COMMENT '换手率',
+  `turn_percent_15` float DEFAULT NULL COMMENT '换手率',
+  `turn_percent_30` float DEFAULT NULL COMMENT '换手率',
+  `total_market_value` float DEFAULT NULL COMMENT '总市值=交易量/换手率*开盘价，单位：亿',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_code_date` (`code`,`date`)
+) ENGINE=InnoDB AUTO_INCREMENT=1547829 DEFAULT CHARSET=utf8mb4 COMMENT='股票K线数据表';
+
+
+
+CREATE TABLE `bao_stock_dividend` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `code` varchar(20) NOT NULL COMMENT '证券代码',
+  `dividPreNoticeDate` date DEFAULT NULL COMMENT '预批露公告日',
+  `dividAgmPumDate` date DEFAULT NULL COMMENT '	股东大会公告日期',
+  `dividPlanAnnounceDate` date DEFAULT NULL COMMENT '预案公告日',
+  `dividPlanDate` date DEFAULT NULL COMMENT '	分红实施公告日',
+  `dividRegistDate` date DEFAULT NULL COMMENT '股权登记告日',
+  `dividOperateDate` date DEFAULT NULL COMMENT '除权除息日期',
+  `dividPayDate` date DEFAULT NULL COMMENT '派息日',
+  `dividStockMarketDate` date DEFAULT NULL COMMENT '红股上市交易日',
+  `dividCashPsBeforeTax` float DEFAULT NULL COMMENT '每股股利税前=派息比例分子(税前)/派息比例分母',
+  `dividCashPsAfterTax` varchar(100) DEFAULT NULL COMMENT '每股股利税后',
+  `dividStocksPs` float DEFAULT NULL COMMENT '每股红股',
+  `dividCashStock` varchar(100) DEFAULT NULL COMMENT '分红送转=每股派息数(税前)+每股送股数+每股转增股本数',
+  `dividReserveToStockPs` float DEFAULT NULL COMMENT '每股转增资本',
+  `data_exist` int(1) DEFAULT '1' COMMENT '数据是否有，1有，0没有',
+  `year` int(11) DEFAULT NULL COMMENT '统计年份',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `zhuan_num` float DEFAULT NULL,
+  `song_num` float DEFAULT NULL,
+  `earliest_date` date DEFAULT NULL COMMENT '最早日期',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_code_dividOperateDate` (`code`,`dividOperateDate`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=119781 DEFAULT CHARSET=utf8mb4 COMMENT='股票除权除息数据表';
+
+CREATE TABLE `bao_stock_balance` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `code` varchar(20) NOT NULL COMMENT '股票代码',
+  `pubDate` date DEFAULT NULL COMMENT '公告日期',
+  `statDate` date DEFAULT NULL COMMENT '统计日期',
+  `currentRatio` float DEFAULT NULL COMMENT '流动比率=流动资产/流动负债',
+  `quickRatio` float DEFAULT NULL COMMENT '速动比率=(流动资产-存货净额)/流动负债',
+  `cashRatio` float DEFAULT NULL COMMENT '现金比率=(货币资金+交易性金融资产)/流动负债',
+  `YOYLiability` float DEFAULT NULL COMMENT '总负债同比增长率=(本期总负债-上年同期总负债)/上年同期中负债的绝对值*100%',
+  `liabilityToAsset` float DEFAULT NULL COMMENT '资产负债率=负债总额/资产总额',
+  `assetToEquity` float DEFAULT NULL COMMENT '权益乘数=资产总额/股东权益总额=1/(1-资产负债率)',
+  `year` int(11) DEFAULT NULL COMMENT '统计年份',
+  `quarter` int(11) DEFAULT NULL COMMENT '统计季度',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `data_exist` int(1) DEFAULT '1' COMMENT '数据是否有，1有，0没有',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_code_year_quarter` (`code`,`year`,`quarter`)
+) ENGINE=InnoDB AUTO_INCREMENT=413658 DEFAULT CHARSET=utf8mb4 COMMENT='股票季频偿债能力数据表';
+
+CREATE TABLE `bao_stock_cash_flow` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `code` varchar(20) NOT NULL COMMENT '股票代码',
+  `pubDate` date DEFAULT NULL COMMENT '公司发布财报的日期',
+  `statDate` date DEFAULT NULL COMMENT '财报统计的季度的最后一天, 比如2017-03-31, 2017-06-30',
+  `CAToAsset` float DEFAULT NULL COMMENT '流动资产除以总资产',
+  `NCAToAsset` float DEFAULT NULL COMMENT '非流动资产除以总资产',
+  `tangibleAssetToAsset` float DEFAULT NULL COMMENT '有形资产除以总资产',
+  `ebitToInterest` float DEFAULT NULL COMMENT '已获利息倍数=息税前利润/利息费用',
+  `CFOToOR` float DEFAULT NULL COMMENT '经营活动产生的现金流量净额除以营业收入',
+  `CFOToNP` float DEFAULT NULL COMMENT '经营性现金净流量除以净利润',
+  `CFOToGr` float DEFAULT NULL COMMENT '经营性现金净流量除以营业总收入',
+  `year` int(11) DEFAULT NULL COMMENT '统计年份',
+  `quarter` int(11) DEFAULT NULL COMMENT '统计季度',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `data_exist` int(1) DEFAULT '1' COMMENT '数据是否有，1有，0没有',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_code_year_quarter` (`code`,`year`,`quarter`)
+) ENGINE=InnoDB AUTO_INCREMENT=404265 DEFAULT CHARSET=utf8mb4 COMMENT='股票季频现金流量数据表';
+
+CREATE TABLE `bao_stock_growth` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `code` varchar(20) NOT NULL COMMENT '股票代码',
+  `pubDate` date DEFAULT NULL COMMENT '公告日期',
+  `statDate` date DEFAULT NULL COMMENT '统计日期',
+  `YOYEquity` float DEFAULT NULL COMMENT '净资产同比增长率(%)=(本期净资产-上年同期净资产)/上年同期净资产的绝对值*100%',
+  `YOYAsset` float DEFAULT NULL COMMENT '总资产同比增长率(%)=(本期总资产-上年同期总资产)/上年同期总资产的绝对值*100%',
+  `YOYNI` float DEFAULT NULL COMMENT '净利润同比增长率=	(本期净利润-上年同期净利润)/上年同期净利润的绝对值*100%',
+  `YOYEPSBasic` float DEFAULT NULL COMMENT '基本每股收益同比增长率=(本期基本每股收益-上年同期基本每股收益)/上年同期基本每股收益的绝对值*100%',
+  `YOYPNI` float DEFAULT NULL COMMENT '归属母公司股东净利润同比增长率=	(本期归属母公司股东净利润-上年同期归属母公司股东净利润)/上年同期归属母公司股东净利润的绝对值*100%',
+  `year` int(11) DEFAULT NULL COMMENT '统计年份',
+  `quarter` int(11) DEFAULT NULL COMMENT '统计季度',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `data_exist` int(1) DEFAULT '1' COMMENT '数据是否有，1有，0没有',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_code_year_quarter` (`code`,`year`,`quarter`)
+) ENGINE=InnoDB AUTO_INCREMENT=401920 DEFAULT CHARSET=utf8mb4 COMMENT='股票季频成长能力数据表';
+
+CREATE TABLE `bao_stock_operation` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `code` varchar(20) NOT NULL COMMENT '股票代码',
+  `pubDate` date DEFAULT NULL COMMENT '公告日期',
+  `statDate` date DEFAULT NULL COMMENT '统计日期',
+  `NRTurnRatio` float DEFAULT NULL COMMENT '应收账款周转率(次)=营业收入/[(期初应收票据及应收账款净额+期末应收票据及应收账款净额)/2]',
+  `NRTurnDays` float DEFAULT NULL COMMENT '应收账款周转天数(天)=季报天数/应收账款周转率(一季报：90天，中报：180天，三季报：270天，年报：360天)',
+  `INVTurnRatio` float DEFAULT NULL COMMENT '存货周转率(次)=营业成本/[(期初存货净额+期末存货净额)/2]',
+  `INVTurnDays` float DEFAULT NULL COMMENT '存货周转天数(天)=季报天数/存货周转率(一季报：90天，中报：180天，三季报：270天，年报：360天)',
+  `CATurnRatio` float DEFAULT NULL COMMENT '流动资产周转率(次)=营业总收入/[(期初流动资产+期末流动资产)/2]',
+  `AssetTurnRatio` float DEFAULT NULL COMMENT '总资产周转率=营业总收入/[(期初资产总额+期末资产总额)/2]',
+  `year` int(11) DEFAULT NULL COMMENT '统计年份',
+  `quarter` int(11) DEFAULT NULL COMMENT '统计季度',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `data_exist` int(1) DEFAULT '1' COMMENT '数据是否有，1有，0没有',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_code_year_quarter` (`code`,`year`,`quarter`)
+) ENGINE=InnoDB AUTO_INCREMENT=407834 DEFAULT CHARSET=utf8mb4 COMMENT='股票季频营运能力数据表';
+
+CREATE TABLE `bao_stock_profit` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `code` varchar(20) NOT NULL COMMENT '股票代码',
+  `pubDate` date DEFAULT NULL COMMENT '公告日期',
+  `statDate` date DEFAULT NULL COMMENT '统计日期',
+  `roeAvg` float DEFAULT NULL COMMENT '净资产收益率(平均)(%)=归属母公司股东净利润/[(期初归属母公司股东的权益+期末归属母公司股东的权益)/2]*100%',
+  `npMargin` float DEFAULT NULL COMMENT '销售净利率(%)=净利润/营业收入*100%',
+  `gpMargin` float DEFAULT NULL COMMENT '销售毛利率(%)=毛利/营业收入*100%=(营业收入-营业成本)/营业收入*100%',
+  `netProfit` float DEFAULT NULL COMMENT '净利润(元)',
+  `epsTTM` float DEFAULT NULL COMMENT '每股收益=归属母公司股东的净利润TTM/最新总股本',
+  `MBRevenue` float DEFAULT NULL COMMENT '主营营业收入(元)',
+  `totalShare` float DEFAULT NULL COMMENT '总股本',
+  `liqaShare` float DEFAULT NULL COMMENT '流通股本',
+  `year` int(11) DEFAULT NULL COMMENT '统计年份',
+  `quarter` int(11) DEFAULT NULL COMMENT '统计季度',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `data_exist` int(1) DEFAULT '1' COMMENT '数据是否有，1有，0没有',
+  `MBRevenue_percent` float DEFAULT NULL COMMENT '营收同比=当前营收/去年同期营收',
+  `cash_all` float DEFAULT NULL COMMENT '总现金流=mb_revenue营收*cfo_to_gr总现金流占营收比例',
+  `cash_all_percent` float DEFAULT NULL COMMENT '总现金流同比',
+  `cash_income` float DEFAULT NULL COMMENT '经营现金流=mb_revenue营收*cfo_to_or占比',
+  `cash_income_percent` float DEFAULT NULL COMMENT '经营现金流同比',
+  `dividend_pay_percent` float DEFAULT NULL COMMENT '股利支付率',
+  `MBRevenue_2` float DEFAULT NULL COMMENT '总营收，根据净利润/净利率计算得来',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_code_year_quarter` (`code`,`year`,`quarter`)
+) ENGINE=InnoDB AUTO_INCREMENT=401911 DEFAULT CHARSET=utf8mb4 COMMENT='股票季频盈利能力数据表';
+
+
+
+
+
+CREATE TABLE `stock_auto_tags` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `code` varchar(20) NOT NULL COMMENT '股票代码',
+  `pubDate` date DEFAULT NULL COMMENT '公告日期，即消息的最早日期',
+  `statDate` date DEFAULT NULL COMMENT '统计日期',
+  `year` int(11) DEFAULT NULL COMMENT '统计年份',
+  `quarter` int(11) DEFAULT NULL COMMENT '统计季度',
+  `bao_tags_loss` text DEFAULT NULL COMMENT '负面标签',
+  `bao_tags_positive` text DEFAULT NULL COMMENT '依据bao计算的标签，正面标签',
+  `tags_type` int(11) DEFAULT NULL COMMENT '类型1季度，2分红',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_code_statDate` (`code`,`statDate`,`tags_type`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=393217 DEFAULT CHARSET=utf8mb4 COMMENT='股票的自动计算好的标签';
+
+CREATE TABLE `stock_basic_ana` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `code` varchar(20) DEFAULT NULL COMMENT '证券代码',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `curTotalprice` float DEFAULT NULL COMMENT '当前总市值，不是流通市值',
+  `epsTTM` float DEFAULT NULL COMMENT '最近1年每股收益，按季度折算',
+  `dividCashPsBeforeTax` float DEFAULT NULL COMMENT '最近1年股息',
+  `dividCashPsPercent` float DEFAULT NULL COMMENT '最近1年股息率',
+  `MBRevenueRate` float DEFAULT NULL COMMENT '同比营收增速',
+  `netProfitRate` float DEFAULT NULL COMMENT '近1季度净利润增长率',
+  `roeAvg` float DEFAULT NULL COMMENT '净资产收益率(平均)(%)',
+  `gpMargin` float DEFAULT NULL COMMENT '销售毛利率',
+  `npMargin` float DEFAULT NULL COMMENT '销售净利率',
+  `jijinNum` int(11) DEFAULT NULL COMMENT '持仓基金数量',
+  `jijinPercent` float DEFAULT NULL COMMENT '基金持仓百分比',
+  `tradeBuyPE` float DEFAULT NULL COMMENT '交易-买入pe',
+  `tradeBuyAllPE` float DEFAULT NULL COMMENT '交易-全仓pe',
+  `tradeSalePE` float DEFAULT NULL COMMENT '交易-卖出pe',
+  `tradeSaleAllPE` float DEFAULT NULL COMMENT '交易-清仓pe',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=10615 DEFAULT CHARSET=utf8mb4 COMMENT='证券分析表-股票';

@@ -18,9 +18,9 @@ def get_db_conn(sql_echo = True):
 # 获取全部股票基本信息, 包含tags标签
 def get_stock_info_tagslist(conn):
     # 获取所有上市股票代码
-    # SELECT * FROM bao_stock_basic WHERE type='1' and JSON_LENGTH(tags) > 0 order by id asc
+    # SELECT * FROM bao_stock_basic WHERE type='1' and tags IS NOT NULL AND tags != '' order by id asc
     # SELECT * FROM bao_stock_basic where type='1' order by code asc
-    query = f"SELECT * FROM bao_stock_basic WHERE type='1' and JSON_LENGTH(tags) > 0 order by id asc"
+    query = f"SELECT * FROM bao_stock_basic WHERE type='1' and tags IS NOT NULL AND tags != '' order by id asc"
     results = conn.execute(text(query)).fetchall()
     return results
 
@@ -54,6 +54,20 @@ def get_ak_fund_all(conn):
     query = f"SELECT * FROM ak_fund_basic order by fd_code asc"
     results = conn.execute(text(query)).fetchall()
     return results
+
+# 字符串分割辅助函数：将逗号分隔的字符串转换为列表
+def split_tags_to_list(tags_str):
+    """将逗号分隔的标签字符串转换为列表"""
+    if not tags_str:
+        return []
+    return [tag.strip() for tag in tags_str.split(',') if tag.strip()]
+
+# 字符串合并辅助函数：将列表转换为逗号分隔的字符串
+def join_list_to_tags(tags_list):
+    """将标签列表转换为逗号分隔的字符串"""
+    if not tags_list:
+        return None
+    return ','.join(sorted(tags_list))
 
 
 

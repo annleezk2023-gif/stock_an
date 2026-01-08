@@ -25,7 +25,7 @@ if __name__ == '__main__':
     try:
         start_year = 2025
         end_year = 2025
-        end_quarter = 3
+        end_quarter = 4
 
         conn = stock_common.get_db_conn(sql_echo=False)
         # 0 清除旧数据

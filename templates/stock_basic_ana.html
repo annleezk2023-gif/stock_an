@@ -156,70 +156,16 @@
                             </td>
                             <td>
                                 手动：{% if item.tags %}
-                                    <script>
-                                        // 获取标签文本
-                                        var tagsText = document.createTextNode('{{ item.tags }}').nodeValue;
-                                        // 使用字符串操作直接提取标签内容，避免JSON解析问题
-                                        // 1. 移除首尾的方括号
-                                        var cleanedText = tagsText.replace(/^\[/, '').replace(/\]$/, '');
-                                        // 2. 处理各种引号实体和转义
-                                        cleanedText = cleanedText.replace(/&#34;/g, '"')
-                                                              .replace(/&quot;/g, '"')
-                                                              .replace(/&#39;/g, '')
-                                                              .replace(/'/g, '"');
-                                        // 3. 按逗号分割，考虑可能的空格
-                                        var tagItems = cleanedText.split(/\s*,\s*/);
-                                        // 4. 移除每个标签的引号并显示
-                                        tagItems.forEach(function(tag) {
-                                            // 移除可能的首尾引号
-                                            tag = tag.replace(/^"/, '').replace(/"$/, '').trim();
-                                            if (tag) {
-                                                var tagSpan = document.createElement('span');
-                                                tagSpan.style.backgroundColor = '#4CAF50';
-                                                tagSpan.style.color = 'white';
-                                                tagSpan.style.padding = '2px 8px';
-                                                tagSpan.style.borderRadius = '12px';
-                                                tagSpan.style.fontSize = '12px';
-                                                tagSpan.style.marginRight = '4px';
-                                                tagSpan.textContent = tag;
-                                                document.currentScript.parentNode.appendChild(tagSpan);
-                                            }
-                                        });
-                                    </script>
+                                    {% for tag in item.tags %}
+                                        <span style="background-color: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">{{ tag }}</span>
+                                    {% endfor %}
                                 {% else %}
                                     -
                                 {% endif %}
                                 <br/>自动：{% if item.auto_tags %}
-                                    <script>
-                                        // 获取标签文本
-                                        var tagsText = document.createTextNode('{{ item.auto_tags }}').nodeValue;
-                                        // 使用字符串操作直接提取标签内容，避免JSON解析问题
-                                        // 1. 移除首尾的方括号
-                                        var cleanedText = tagsText.replace(/^\[/, '').replace(/\]$/, '');
-                                        // 2. 处理各种引号实体和转义
-                                        cleanedText = cleanedText.replace(/&#34;/g, '"')
-                                                              .replace(/&quot;/g, '"')
-                                                              .replace(/&#39;/g, '')
-                                                              .replace(/'/g, '"');
-                                        // 3. 按逗号分割，考虑可能的空格
-                                        var tagItems = cleanedText.split(/\s*,\s*/);
-                                        // 4. 移除每个标签的引号并显示
-                                        tagItems.forEach(function(tag) {
-                                            // 移除可能的首尾引号
-                                            tag = tag.replace(/^"/, '').replace(/"$/, '').trim();
-                                            if (tag) {
-                                                var tagSpan = document.createElement('span');
-                                                tagSpan.style.backgroundColor = '#4CAF50';
-                                                tagSpan.style.color = 'white';
-                                                tagSpan.style.padding = '2px 8px';
-                                                tagSpan.style.borderRadius = '12px';
-                                                tagSpan.style.fontSize = '12px';
-                                                tagSpan.style.marginRight = '4px';
-                                                tagSpan.textContent = tag;
-                                                document.currentScript.parentNode.appendChild(tagSpan);
-                                            }
-                                        });
-                                    </script>
+                                    {% for tag in item.auto_tags %}
+                                        <span style="background-color: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">{{ tag }}</span>
+                                    {% endfor %}
                                 {% else %}
                                     -
                                 {% endif %}
@@ -227,25 +173,53 @@
                                  经营：
                                  {% if item.bao_tag %}
                                    {{ item.bao_tag.statDate }}
-                                    {% if item.bao_tag.bao_tags_loss and item.bao_tag.bao_tags_loss | length > 2 %}
-                                        <span style="color: red;">{{ item.bao_tag.bao_tags_loss }}</span>
+                                    {% set loss_tags = item.bao_tag.bao_tags_loss.split(',') if item.bao_tag.bao_tags_loss else [] %}
+                                    {% if loss_tags and loss_tags | length > 0 %}
+                                        {% for tag in loss_tags %}
+                                            {% if tag.strip() %}
+                                                <span style="color: red;">{{ tag.strip() }}</span>
+                                            {% endif %}
+                                        {% endfor %}
                                     {% else %}
                                         -
-                                    {% endif %}<br/> 
-                                    {{ item.bao_tag.bao_tags_positive if item.bao_tag.bao_tags_positive else '-' }}
+                                    {% endif %}<br/>
+                                    {% set positive_tags = item.bao_tag.bao_tags_positive.split(',') if item.bao_tag.bao_tags_positive else [] %}
+                                    {% if positive_tags and positive_tags | length > 0 %}
+                                        {% for tag in positive_tags %}
+                                            {% if tag.strip() %}
+                                                <span style="background-color: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">{{ tag.strip() }}</span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
                                 {% else %}
                                     -
                                 {% endif %}
                                 <br/>
                                 拆股分红：
                                 {% if item.bao_fenghong_tag %}
-                                    {{ item.bao_fenghong_tag.statDate }} 
-                                    {% if item.bao_fenghong_tag.bao_tags_loss and item.bao_fenghong_tag.bao_tags_loss | length > 2 %}
-                                        <span style="color: red;">{{ item.bao_fenghong_tag.bao_tags_loss }}</span>
+                                    {{ item.bao_fenghong_tag.statDate }}
+                                    {% set fenghong_loss_tags = item.bao_fenghong_tag.bao_tags_loss.split(',') if item.bao_fenghong_tag.bao_tags_loss else [] %}
+                                    {% if fenghong_loss_tags and fenghong_loss_tags | length > 0 %}
+                                        {% for tag in fenghong_loss_tags %}
+                                            {% if tag.strip() %}
+                                                <span style="color: red;">{{ tag.strip() }}</span>
+                                            {% endif %}
+                                        {% endfor %}
                                     {% else %}
                                         -
-                                    {% endif %}<br/> 
-                                    {{ item.bao_fenghong_tag.bao_tags_positive if item.bao_fenghong_tag.bao_tags_positive else '-' }}
+                                    {% endif %}<br/>
+                                    {% set fenghong_positive_tags = item.bao_fenghong_tag.bao_tags_positive.split(',') if item.bao_fenghong_tag.bao_tags_positive else [] %}
+                                    {% if fenghong_positive_tags and fenghong_positive_tags | length > 0 %}
+                                        {% for tag in fenghong_positive_tags %}
+                                            {% if tag.strip() %}
+                                                <span style="background-color: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">{{ tag.strip() }}</span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
                                 {% else %}
                                     -
                                 {% endif %}
