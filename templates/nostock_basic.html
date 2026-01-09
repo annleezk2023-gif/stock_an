@@ -15,7 +15,7 @@
             margin-bottom: 20px;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1920px;
             margin: 0 auto;
             background-color: white;
             padding: 20px;
@@ -95,18 +95,18 @@
         </div>
         
         <!-- 数据表格 -->
-        <table>
+        <table class="nostock-basic-table">
             <thead>
-                <tr>
-                    <th>证券代码</th>
-                    <th>证券名称</th>
-                    <th>上市日期</th>
-                    <th>退市日期</th>
-                    <th>证券类型</th>
-                    <th>上市状态</th>
-                    <th>标签</th>
-                    <th>备注</th>
-                    <th>操作</th>
+                <tr style="background-color: #f2f2f2;">
+                    <th style="width: 100px;">证券代码</th>
+                    <th style="width: 100px;">证券名称</th>
+                    <th style="width: 120px;">上市日期</th>
+                    <th style="width: 120px;">退市日期</th>
+                    <th style="width: 50px;">证券类型</th>
+                    <th style="width: 50px;">上市状态</th>
+                    <th style="width: 50px;">标签</th>
+                    <th style="width: 300px;">备注</th>
+                    <th style="width: 50px;">操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -143,14 +143,14 @@
                             </div>
                         </td>
                         <td>
-                            <button onclick="editTags({{ nostock.id }}, '{{ nostock.code }}', '{{ nostock.code_name }}', {% if nostock.tags is none %}null{% else %}{{ nostock.tags }}{% endif %})" style="background-color: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-bottom: 5px; display: block;">编辑标签</button>
+                            <button onclick="editTags({{ nostock.id }}, '{{ nostock.code }}', '{{ nostock.code_name }}', {{ nostock.tags | tojson | safe }})" style="background-color: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-bottom: 5px; display: block;">编辑标签</button>
                             <button onclick="editRemark({{ nostock.id }}, '{{ nostock.code }}', '{{ nostock.code_name }}', {{ nostock.remark | tojson | safe }})" style="background-color: #FF9800; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; display: block;">编辑备注</button>
                         </td>
                         </tr>
                     {% endfor %}
                 {% else %}
                     <tr>
-                        <td colspan="6" style="text-align: center; padding: 20px;">暂无数据</td>
+                        <td colspan="9" style="text-align: center; padding: 20px;">暂无数据</td>
                     </tr>
                 {% endif %}
             </tbody>

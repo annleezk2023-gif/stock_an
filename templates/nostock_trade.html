@@ -22,7 +22,7 @@
             margin-bottom: 20px;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1920px;
             margin: 0 auto;
             background-color: white;
             padding: 20px;
@@ -31,13 +31,17 @@
         }
         table {
             width: 100%;
+            max-width: 1920px;
             border-collapse: collapse;
             margin: 20px 0;
+            table-layout: fixed;
         }
         th, td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #ddd;
+            word-wrap: break-word;
+            word-break: break-word;
         }
         th {
             background-color: #2196F3;
@@ -119,17 +123,17 @@
         </div>
 
         <div class="table-container">
-            <table>
+            <table class="nostock-trade-table">
                 <thead>
                     <tr>
-                        <th>日期</th>
-                        <th>开盘价</th>
-                        <th>最高</th>
-                        <th>最低</th>
-                        <th>收盘价</th>
-                        <th>成交量</th>
-                        <th>成交额</th>
-                        <th>复权状态</th>
+                        <th style="width: 120px;">日期</th>
+                        <th style="width: 100px;">开盘价</th>
+                        <th style="width: 100px;">最高</th>
+                        <th style="width: 100px;">最低</th>
+                        <th style="width: 100px;">收盘价</th>
+                        <th style="width: 120px;">成交量</th>
+                        <th style="width: 150px;">成交额</th>
+                        <th style="width: 100px;">复权状态</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -140,8 +144,8 @@
                         <td>{{ trade.high }}</td>
                         <td>{{ trade.low }}</td>
                         <td>{{ trade.close }}</td>
-                        <td>{{ trade.volume }}</td>
-                        <td>{{ trade.amount }}</td>
+                        <td>{{ '%.2f' | format(trade.volume / 100000000) if trade.volume else '-' }}亿</td>
+                        <td>{{ '%.2f' | format(trade.amount / 100000000) if trade.amount else '-' }}亿</td>
                         <td>{{ '后复权' if trade.adjustflag == 1 else '不复权' }}</td>
                     </tr>
                     {% endfor %}

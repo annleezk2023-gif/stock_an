@@ -1,6 +1,7 @@
 import sys
 import os
 from sqlalchemy import text
+import json
 import datetime
 
 # 配置logger
@@ -106,16 +107,12 @@ def save_bao_tags_2_db(stock_code, statDateStr, pubDate, positive_tags, loss_tag
     stock = conn.execute(text(sql)).fetchone()
     if stock is None:
         logger.debug(f"股票{stock_code}不存在，跳过更新自动标签")
-        # 排序后转换为逗号分隔字符串
-        positive_tags_sorted = sorted(positive_tags)
-        loss_tags_sorted = sorted(loss_tags)
         conn.execute(text(f"""INSERT INTO stock_auto_tags (code, statDate, pubDate, tags_type, bao_tags_positive, bao_tags_loss)
-            VALUES ('{stock_code}', '{statDateStr}', '{pubDateStr}', {tags_type}, '{','.join(positive_tags_sorted)}', '{','.join(loss_tags_sorted)}')"""))
+            VALUES ('{stock_code}', '{statDateStr}', '{pubDateStr}', {tags_type}, JSON_ARRAY({','.join([f"'{tag}'" for tag in positive_tags])}), JSON_ARRAY({','.join([f"'{tag}'" for tag in loss_tags])}))"""))
         conn.commit()
     else:
-        # 解析逗号分隔的字符串为Python列表
-        new_positive_tags = [tag.strip() for tag in stock.bao_tags_positive.split(',')] if stock.bao_tags_positive else []
-        new_loss_tags = [tag.strip() for tag in stock.bao_tags_loss.split(',')] if stock.bao_tags_loss else []
+        new_positive_tags = stock.bao_tags_positive if stock.bao_tags_positive else []
+        new_loss_tags = stock.bao_tags_loss if stock.bao_tags_loss else []
 
         # 新的标签增加进去
         for cur_tag in positive_tags:
@@ -136,15 +133,13 @@ def save_bao_tags_2_db(stock_code, statDateStr, pubDate, positive_tags, loss_tag
         new_loss_tags.sort()
 
         # 如果内容没改变，就不更新
-        new_positive_tags_txt = ','.join(new_positive_tags)
-        new_loss_tags_txt = ','.join(new_loss_tags)
-        if stock.bao_tags_positive == new_positive_tags_txt and stock.bao_tags_loss == new_loss_tags_txt:
+        if stock.bao_tags_positive == new_positive_tags and stock.bao_tags_loss == new_loss_tags:
             logger.debug(f"股票{stock_code}自动标签内容未改变，跳过更新")
             return
         
         sql = f"""UPDATE stock_auto_tags 
-            SET bao_tags_positive = '{new_positive_tags_txt}',
-                bao_tags_loss = '{new_loss_tags_txt}'
+            SET bao_tags_positive = JSON_ARRAY({','.join([f"'{tag}'" for tag in new_positive_tags])}),
+                bao_tags_loss = JSON_ARRAY({','.join([f"'{tag}'" for tag in new_loss_tags])})
             WHERE code = '{stock_code}' and statDate = '{statDateStr}' and tags_type = {tags_type}"""
         conn.execute(text(sql))
         conn.commit()  # 提交连接层面的事务
@@ -158,12 +153,12 @@ def gen_fenhong_tags_data(conn=None):
     # 初始化分红日期
     init_dividend_date(conn)
     
-    # 获取所有上市股票代码
+    # 获取所有股票代码
     query = f"SELECT * FROM bao_stock_basic where type='1' order by code asc"
     stocks = conn.execute(text(query)).fetchall()
     
     if not stocks:
-        logger.info("未获取到上市股票数据")
+        logger.info("未获取到股票数据")
         return
     
     total_stocks = len(stocks)
@@ -213,7 +208,7 @@ def init_dividend_date(conn):
     logger.info(f"bao_stock_dividend表earliest_date字段更新")
 
 if __name__ == "__main__":
-    conn = stock_common.get_db_conn()
+    conn = stock_common.get_db_conn(sql_echo = False)
     logger.info("开始gen_season_tags_data...")
     gen_fenhong_tags_data(conn=conn)
     logger.info("结束gen_season_tags_data...")

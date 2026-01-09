@@ -1,6 +1,8 @@
 import sys
 import os
 from sqlalchemy import text
+import json
+import datetime
 
 # 配置logger
 import logging
@@ -205,7 +207,7 @@ def count_gen_num(conn):
         logger.info(f"{item[0]}: {item[1]}")
 
 if __name__ == "__main__":
-    conn = stock_common.get_db_conn()
+    conn = stock_common.get_db_conn(sql_echo = False)
     logger.info("开始gen_season_tags_data...")
     
     count_gen_num(conn)

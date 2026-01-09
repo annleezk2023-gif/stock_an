@@ -1,18 +1,18 @@
 {% extends "stock_common.html" %}
 {% set action_url = "/stock_basic" %}
-{% set container_max_width = "1600px" %}
+{% set container_max_width = "1920px" %}
 {% block content %}
         <!-- 显示数据表格 -->
-        <table>
+        <table class="stock-basic-ana-table">
             <thead>
                 <tr>
-                    <th>名称 </th>
-                    <th>最近交易日期</th>
-                    <th class="number-cell">股息</th>
-                    <th class="number-cell">营收增长</th>
-                    <th class="number-cell">PE百分位 </th>
-                    <th class="number-cell">交易</th>
-                    <th>标签</th>
+                    <th style="width: 110px;">名称 </th>
+                    <th style="width: 180px;">最近交易日期</th>
+                    <th style="width: 150px;">股息</th>
+                    <th style="width: 150px;">营收增长</th>
+                    <th style="width: 290px;">PE百分位 </th>
+                    <th style="width: 120px;">交易</th>
+                    <th style="width: 450px;">标签</th>
                 </tr>
             </thead>
             <tbody id="stockTableBody">
@@ -41,8 +41,8 @@
                                     30天{{ '%.1f' | format(item.last_kline.turn_percent_30) if item.last_kline.turn_percent_30 else '-' }}%
                             </td>
                             <td>每股收益年：{{ '%.1f' | format(item.ana.epsTTM) if item.ana.epsTTM else '' }}<br/>
-                                股息：{{ '%.2f' | format(item.ana.dividCashPsBeforeTax) if item.ana.dividCashPsBeforeTax else '-' }}<br/>
-                                股息率：{{ '%.2f' | format(item.last_kline.stock_fenghong_percent) if item.last_kline.stock_fenghong_percent else '-' }}%
+                                股息：{{ '%.1f' | format(item.ana.dividCashPsBeforeTax) if item.ana.dividCashPsBeforeTax else '-' }}<br/>
+                                股息率：{{ '%.1f' | format(item.last_kline.stock_fenghong_percent) if item.last_kline.stock_fenghong_percent else '-' }}%
                             </td>
                             <td>营收增速：{{ '%.2f' | format(item.ana.MBRevenueRate) if item.ana.MBRevenueRate else '-' }}%<br/>
                                 利润增速：{{ '%.2f' | format(item.ana.netProfitRate) if item.ana.netProfitRate else '-' }}%<br/>
@@ -170,56 +170,28 @@
                                     -
                                 {% endif %}
                                 <br/>
-                                 经营：
+                                 经营标签：
                                  {% if item.bao_tag %}
                                    {{ item.bao_tag.statDate }}
-                                    {% set loss_tags = item.bao_tag.bao_tags_loss.split(',') if item.bao_tag.bao_tags_loss else [] %}
-                                    {% if loss_tags and loss_tags | length > 0 %}
-                                        {% for tag in loss_tags %}
-                                            {% if tag.strip() %}
-                                                <span style="color: red;">{{ tag.strip() }}</span>
-                                            {% endif %}
-                                        {% endfor %}
+                                    {% if item.bao_tag.bao_tags_loss and item.bao_tag.bao_tags_loss | length > 0 %}
+                                        <span style="color: red;">{{ item.bao_tag.bao_tags_loss | join(', ') }}</span>
                                     {% else %}
                                         -
-                                    {% endif %}<br/>
-                                    {% set positive_tags = item.bao_tag.bao_tags_positive.split(',') if item.bao_tag.bao_tags_positive else [] %}
-                                    {% if positive_tags and positive_tags | length > 0 %}
-                                        {% for tag in positive_tags %}
-                                            {% if tag.strip() %}
-                                                <span style="background-color: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">{{ tag.strip() }}</span>
-                                            {% endif %}
-                                        {% endfor %}
-                                    {% else %}
-                                        -
-                                    {% endif %}
+                                    {% endif %}<br/> 
+                                    {{ item.bao_tag.bao_tags_positive | join(', ') if item.bao_tag.bao_tags_positive and item.bao_tag.bao_tags_positive | length > 0 else '-' }}
                                 {% else %}
                                     -
                                 {% endif %}
                                 <br/>
-                                拆股分红：
+                                拆股分红标签：
                                 {% if item.bao_fenghong_tag %}
-                                    {{ item.bao_fenghong_tag.statDate }}
-                                    {% set fenghong_loss_tags = item.bao_fenghong_tag.bao_tags_loss.split(',') if item.bao_fenghong_tag.bao_tags_loss else [] %}
-                                    {% if fenghong_loss_tags and fenghong_loss_tags | length > 0 %}
-                                        {% for tag in fenghong_loss_tags %}
-                                            {% if tag.strip() %}
-                                                <span style="color: red;">{{ tag.strip() }}</span>
-                                            {% endif %}
-                                        {% endfor %}
+                                    {{ item.bao_fenghong_tag.statDate }} 
+                                    {% if item.bao_fenghong_tag.bao_tags_loss and item.bao_fenghong_tag.bao_tags_loss | length > 0 %}
+                                        <span style="color: red;">{{ item.bao_fenghong_tag.bao_tags_loss | join(', ') }}</span>
                                     {% else %}
                                         -
-                                    {% endif %}<br/>
-                                    {% set fenghong_positive_tags = item.bao_fenghong_tag.bao_tags_positive.split(',') if item.bao_fenghong_tag.bao_tags_positive else [] %}
-                                    {% if fenghong_positive_tags and fenghong_positive_tags | length > 0 %}
-                                        {% for tag in fenghong_positive_tags %}
-                                            {% if tag.strip() %}
-                                                <span style="background-color: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">{{ tag.strip() }}</span>
-                                            {% endif %}
-                                        {% endfor %}
-                                    {% else %}
-                                        -
-                                    {% endif %}
+                                    {% endif %}<br/> 
+                                    {{ item.bao_fenghong_tag.bao_tags_positive | join(', ') if item.bao_fenghong_tag.bao_tags_positive and item.bao_fenghong_tag.bao_tags_positive | length > 0 else '-' }}
                                 {% else %}
                                     -
                                 {% endif %}

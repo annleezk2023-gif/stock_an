@@ -56,8 +56,8 @@ class BaoStockBasic(db.Model):
     out_date = db.Column(db.Date)  # 退市日期
     type = db.Column(db.String(50))  # 证券类型
     status = db.Column(db.String(20))  # 上市状态
-    tags = db.Column(db.String(100))  # 标签字段，逗号分隔的字符串
-    auto_tags = db.Column(db.String(100))  # 自动生成的标签字段，逗号分隔的字符串
+    tags = db.Column(db.JSON)  # 标签字段，JSON格式，可以存储多个中文词
+    auto_tags = db.Column(db.JSON)  # 自动生成的标签字段，JSON格式，可以存储多个中文词
     remark = db.Column(db.String(1000))  # 备注字段，最多1000个文字
     risk_memo = db.Column(db.String(200))  # 风险备注字段，最多200个文字
     industry = db.Column(db.String(100))  # 所属行业
@@ -120,7 +120,7 @@ class FundAna(db.Model):
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment='主键ID')
     industry = db.Column(db.String(100), unique=True, nullable=False, comment='所属行业')
-    all_stock = db.Column(db.String(1000), comment='所有股票代码，逗号分隔')
+    all_stock = db.Column(db.Text, comment='所有股票代码，逗号分隔')
     top_stock = db.Column(db.String(100), comment='行业TOP10股票的代码')
     sort_tag = db.Column(db.Integer, comment='排序标签，可选值：3重点、2观察、1不看')
     remark = db.Column(db.String(1000), comment='备注字段，最多1000个文字')
@@ -283,7 +283,7 @@ def get_stock_basic_query_sql(code_name='', code='', industry=None, status='1', 
     
     # 添加自动标签数量过滤
     if auto_tags_count and auto_tags_count > 0:
-        where_conditions.append(f"(LENGTH(TRIM(auto_tags)) - LENGTH(REPLACE(TRIM(auto_tags), ',', '')) + 1) >= {auto_tags_count}")
+        where_conditions.append(f"JSON_LENGTH(auto_tags) >= {auto_tags_count}")
 
     # 添加bukan过滤
     if bukan == 1:
@@ -316,27 +316,27 @@ def get_stock_basic_query_sql(code_name='', code='', industry=None, status='1', 
         blank_auto_tags = [tag for tag in auto_tags if tag == '_BLANK_']
         normal_auto_tags = [tag for tag in auto_tags if tag != '_BLANK_']
         
-        # 处理普通自动标签 (使用OR连接多个LIKE条件)
+        # 处理普通自动标签 (使用OR连接多个JSON_CONTAINS条件)
         if normal_auto_tags:
             auto_tag_conditions = []
             for idx, tag in enumerate(normal_auto_tags):
                 param_name = f"auto_tag_{idx}"
-                auto_tag_conditions.append(f"(auto_tags LIKE CONCAT('%', :{param_name}, '%') OR auto_tags LIKE CONCAT(:{param_name}, ',%') OR auto_tags LIKE CONCAT('%,', :{param_name}, '%') OR auto_tags = :{param_name})")
-                params[param_name] = tag
+                auto_tag_conditions.append(f"JSON_CONTAINS(auto_tags, :{param_name}, '$')")
+                params[param_name] = f"\"{tag}\""
             
             if auto_tag_conditions:
                 where_conditions.append(f"({' OR '.join(auto_tag_conditions)})")
         
-        # 处理_BLANK_自动标签 (查询auto_tags为null或空字符串的情况)
+        # 处理_BLANK_自动标签 (查询auto_tags为null或空数组的情况)
         if blank_auto_tags:
-            where_conditions.append("(auto_tags IS NULL OR auto_tags = '')")
+            where_conditions.append("(auto_tags IS NULL OR auto_tags = '[]')")
     
     # 组合WHERE子句
     if where_conditions:
         base_sql += " WHERE " + " AND ".join(where_conditions)
     
     # 添加排序
-    base_sql += " ORDER BY (LENGTH(TRIM(auto_tags)) - LENGTH(REPLACE(TRIM(auto_tags), ',', '')) + 1) DESC, code DESC"
+    base_sql += " ORDER BY JSON_LENGTH(auto_tags) DESC, code DESC"
     
     # 执行查询
     if do_paginate:
@@ -367,10 +367,10 @@ def get_stock_basic_query_sql(code_name='', code='', industry=None, status='1', 
 
         #转为stock_basic对象
         results = [BaoStockBasic(**dict(item)) for item in results_old]
-        # tags, auto_tags从字符串转为数组
+        # tags, auto_tags从字符串转为json数组
         for stock in results:
-            stock.tags = [tag.strip() for tag in stock.tags.split(',') if tag.strip()] if stock.tags else []
-            stock.auto_tags = [tag.strip() for tag in stock.auto_tags.split(',') if tag.strip()] if stock.auto_tags else []
+            stock.tags = json.loads(stock.tags) if stock.tags else []
+            stock.auto_tags = json.loads(stock.auto_tags) if stock.auto_tags else []
         
         # 创建自定义分页对象
         class Pagination:
@@ -403,33 +403,6 @@ def get_stock_basic_query_sql(code_name='', code='', industry=None, status='1', 
         # 返回所有结果
         results = db.session.execute(text(base_sql), params).mappings().all()
         return results
-
-
-# 获取行业列表的API接口
-@app.route('/api/industries')
-def get_industries_api():
-    """
-    获取行业列表的API接口
-    
-    返回:
-    - JSON格式的行业列表
-    """
-    try:
-        industries_list = db.session.execute(
-            text("SELECT DISTINCT industry FROM bao_stock_basic WHERE industry IS NOT NULL AND industry <> '' ORDER BY industry")
-        ).scalars().all()
-        return {
-            'success': True,
-            'data': industries_list,
-            'message': '获取行业列表成功'
-        }
-    except Exception as e:
-        logger.error(f"获取行业列表API失败: {e}")
-        return {
-            'success': False,
-            'data': [],
-            'message': f'获取行业列表失败: {str(e)}'
-        }, 500
 
 
 # 显示所有股票基本信息的页面
@@ -472,26 +445,19 @@ def stock_basic_page():
             conn = db.session.connection()
             # 提取3年的K线信息
             for cur_stock in stock_basics:
-                # 转换 tags 和 auto_tags 为列表
-                if cur_stock.tags:
-                    cur_stock.tags = [tag.strip() for tag in cur_stock.tags.split(',')] if cur_stock.tags else []
-                if cur_stock.auto_tags:
-                    cur_stock.auto_tags = [tag.strip() for tag in cur_stock.auto_tags.split(',')] if cur_stock.auto_tags else []
-                
                 trade_table_name = "bao_stock_trade_" + cur_stock.code[-1]
-                kline_sql = f"""SELECT * FROM {trade_table_name} WHERE code = '{cur_stock.code}' AND date >= DATE_SUB(CURDATE(), INTERVAL 3 YEAR) ORDER BY date asc"""
-                kline_results = conn.execute(text(kline_sql)).all()
-                cur_stock.kline_results = kline_results
-                # 最后一条数据
-                if kline_results:
-                    cur_stock.last_kline = kline_results[-1]
-                else:
-                    cur_stock.last_kline = None
+                kline_sql = f"""SELECT * FROM {trade_table_name} WHERE code = '{cur_stock.code}' ORDER BY date DESC LIMIT 1"""
+                cur_stock.last_kline = conn.execute(text(kline_sql)).fetchone()
 
                 # 提取最近的标签
                 tag_sql = f"""SELECT * FROM stock_auto_tags WHERE code = '{cur_stock.code}' and tags_type = 1 ORDER BY statDate DESC LIMIT 1"""
                 tag_result = conn.execute(text(tag_sql)).fetchone()
                 if tag_result:
+                    tag_result = dict(tag_result._mapping)
+                    if tag_result.get('bao_tags_loss'):
+                        tag_result['bao_tags_loss'] = json.loads(tag_result['bao_tags_loss']) if isinstance(tag_result['bao_tags_loss'], str) else tag_result['bao_tags_loss']
+                    if tag_result.get('bao_tags_positive'):
+                        tag_result['bao_tags_positive'] = json.loads(tag_result['bao_tags_positive']) if isinstance(tag_result['bao_tags_positive'], str) else tag_result['bao_tags_positive']
                     cur_stock.bao_tag = tag_result
                 else:
                     cur_stock.bao_tag = None
@@ -499,6 +465,11 @@ def stock_basic_page():
                 tag_sql = f"""SELECT * FROM stock_auto_tags WHERE code = '{cur_stock.code}' and tags_type = 2 ORDER BY statDate DESC LIMIT 1"""
                 tag_result = conn.execute(text(tag_sql)).fetchone()
                 if tag_result:
+                    tag_result = dict(tag_result._mapping)
+                    if tag_result.get('bao_tags_loss'):
+                        tag_result['bao_tags_loss'] = json.loads(tag_result['bao_tags_loss']) if isinstance(tag_result['bao_tags_loss'], str) else tag_result['bao_tags_loss']
+                    if tag_result.get('bao_tags_positive'):
+                        tag_result['bao_tags_positive'] = json.loads(tag_result['bao_tags_positive']) if isinstance(tag_result['bao_tags_positive'], str) else tag_result['bao_tags_positive']
                     cur_stock.bao_fenghong_tag = tag_result
                 else:
                     cur_stock.bao_fenghong_tag = None
@@ -534,10 +505,11 @@ def nostock_basic_page():
         pagination = BaoNoStockBasic.query.order_by(BaoNoStockBasic.code).paginate(page=page, per_page=per_page, error_out=False)
         nostock_basics = pagination.items
         
-        # 将tags字符串转换为数组，供模板显示
+        # tags从字符串转为json数组
         for nostock in nostock_basics:
             if nostock.tags:
-                nostock.tags = [tag.strip() for tag in nostock.tags.split(',') if tag.strip()]
+                if isinstance(nostock.tags, str):
+                    nostock.tags = json.loads(nostock.tags)
             else:
                 nostock.tags = []
         
@@ -655,9 +627,8 @@ def save_stock_tags(id):
             if tag not in allowed_tags:
                 return json.dumps({'success': False, 'message': f'不允许的标签: {tag}'}), 400
         
-        # 更新标签，排序后转换为逗号分隔字符串
-        tags_sorted = sorted(tags)
-        stock.tags = ','.join(tags_sorted)
+        # 更新标签
+        stock.tags = tags
         stock.updated_at = datetime.now()
         
         # 保存到数据库
@@ -669,59 +640,83 @@ def save_stock_tags(id):
         return json.dumps({'success': False, 'message': str(e)}), 500
 
 
+
+# 获取行业列表的API接口
+@app.route('/api/industries')
+def get_industries_api():
+    """
+    获取行业列表的API接口
+    
+    返回:
+    - JSON格式的行业列表
+    """
+    try:
+        industries_list = db.session.execute(
+            text("SELECT DISTINCT industry FROM bao_stock_basic WHERE industry IS NOT NULL AND industry <> '' ORDER BY industry")
+        ).scalars().all()
+        return {
+            'success': True,
+            'data': industries_list,
+            'message': '获取行业列表成功'
+        }
+    except Exception as e:
+        logger.error(f"获取行业列表API失败: {e}")
+        return {
+            'success': False,
+            'data': [],
+            'message': f'获取行业列表失败: {str(e)}'
+        }, 500
+
+
+
 # 显示行业分析页面
 @app.route('/fund_ana')
 def fund_ana_page():
     try:
-        # 查询所有行业分析数据
-        # 先按sort_tag倒序（3重点 > 2观察 > 1不看 > 无标签），再按pe_year_1_percent升序
         fund_anas = FundAna.query.all()
         
-        # 自定义排序：先按sort_tag倒序，再按pe_year_1_percent升序
         def sort_key(fund):
-            # sort_tag的优先级：3 > 2 > 1 > 0
             sort_priority = fund.sort_tag if fund.sort_tag else 0
-            
-            # pe_year_1_percent越小优先级越高
             pe_value = fund.pe_year_1_percent if fund.pe_year_1_percent is not None else 999999
-            
             return (-sort_priority, pe_value)
         
         fund_anas_sorted = sorted(fund_anas, key=sort_key)
         
-        # 为每个行业查询成长型和分红型股票
+        all_stocks = BaoStockBasic.query.filter(BaoStockBasic.status == '1').all()
+        
+        stocks_by_industry = {}
+        for stock in all_stocks:
+            if stock.industry not in stocks_by_industry:
+                stocks_by_industry[stock.industry] = []
+            stocks_by_industry[stock.industry].append(stock)
+        
         for fund in fund_anas_sorted:
-            stocks = BaoStockBasic.query.filter(
-                BaoStockBasic.industry == fund.industry,
-                BaoStockBasic.status == '1'
-            ).all()
+            stocks = stocks_by_industry.get(fund.industry, [])
             
-            growth_stocks = []
-            fenghong_stocks = []
+            growth_15_stocks = []
+            fenghong_3_stocks = []
             for stock in stocks:
                 if stock.auto_tags:
-                    if '成长' in stock.auto_tags:
-                        growth_stocks.append(stock.code)
-                    if '股息' in stock.auto_tags:
-                        fenghong_stocks.append(stock.code)
+                    if '15成长' in stock.auto_tags:
+                        growth_15_stocks.append(stock.code)
+                    if '3股息' in stock.auto_tags:
+                        fenghong_3_stocks.append(stock.code)
             
-            fund.growth_stock = ','.join(growth_stocks) if growth_stocks else None
-            fund.fenghong_stock = ','.join(fenghong_stocks) if fenghong_stocks else None
+            fund.growth_15_stock = ','.join(growth_15_stocks) if growth_15_stocks else None
+            fund.fenghong_3_stock = ','.join(fenghong_3_stocks) if fenghong_3_stocks else None
         
-        # 获取所有股票代码对应的名称
         all_codes = []
         for fund in fund_anas_sorted:
             if fund.top_stock:
                 all_codes.extend(fund.top_stock.split(','))
-            if fund.growth_stock:
-                all_codes.extend(fund.growth_stock.split(','))
-            if fund.fenghong_stock:
-                all_codes.extend(fund.fenghong_stock.split(','))
+            if fund.growth_15_stock:
+                all_codes.extend(fund.growth_15_stock.split(','))
+            if fund.fenghong_3_stock:
+                all_codes.extend(fund.fenghong_3_stock.split(','))
         
         stock_dict = {}
         if all_codes:
-            stocks = BaoStockBasic.query.filter(BaoStockBasic.code.in_(all_codes)).all()
-            stock_dict = {stock.code: stock for stock in stocks}
+            stock_dict = {stock.code: stock for stock in all_stocks if stock.code in all_codes}
         
         return render_template('fund_ana.html', fund_anas=fund_anas_sorted, stock_dict=stock_dict)
     except Exception as e:
@@ -818,14 +813,11 @@ def save_nostock_tags(id):
             if tag not in allowed_tags:
                 return json.dumps({'success': False, 'message': f'不允许的标签: {tag}'}), 400
         
-        # 将标签数组转换为逗号分隔的字符串
-        tags_str = ','.join(tags) if tags else None
-        
         # 查找对应的记录
         nostock = BaoNoStockBasic.query.get_or_404(id)
         
         # 更新标签和时间戳
-        nostock.tags = tags_str
+        nostock.tags = tags
         nostock.updated_at = datetime.now()
         
         # 提交到数据库

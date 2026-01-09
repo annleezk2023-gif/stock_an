@@ -17,7 +17,7 @@
             background-color: #f5f5f5;
         }
         .container {
-            max-width: 1600px;
+            max-width: 1920px;
             margin: 0 auto;
             background-color: white;
             padding: 20px;
@@ -69,13 +69,18 @@
         }
         table {
             width: 100%;
+            max-width: 1920px;
             border-collapse: collapse;
             margin-top: 20px;
+            table-layout: fixed;
         }
         th, td {
             border: 1px solid #ddd;
             padding: 12px;
             text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         th {
             background-color: #f2f2f2;
@@ -122,16 +127,16 @@
         <!-- 按年统计表格 -->
         <div class="table-container">
             <h2>年度统计</h2>
-            <table>
+            <table class="stock-index-trade-table">
                 <thead>
                     <tr>
-                        <th>年份</th>
-                        <th>沪深300涨幅</th>
-                        <th>沪深300最大回撤</th>
-                        <th>中证500涨幅</th>
-                        <th>中证500最大回撤</th>
-                        <th>中证1000涨幅</th>
-                        <th>中证1000最大回撤</th>
+                        <th style="width: 100px;">年份</th>
+                        <th style="width: 150px;">沪深300涨幅</th>
+                        <th style="width: 150px;">沪深300最大回撤</th>
+                        <th style="width: 150px;">中证500涨幅</th>
+                        <th style="width: 150px;">中证500最大回撤</th>
+                        <th style="width: 150px;">中证1000涨幅</th>
+                        <th style="width: 150px;">中证1000最大回撤</th>
                     </tr>
                 </thead>
                 <tbody>

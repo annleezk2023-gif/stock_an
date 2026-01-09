@@ -18,20 +18,6 @@
 pip install -r requirements.txt
 ```
 
-### 3. 配置MySQL数据库
-
-1. 创建数据库：
-   ```sql
-   CREATE DATABASE stock;
-   ```
-
-2. 创建用户并授权（可选）：
-   ```sql
-   CREATE USER 'stock_user'@'localhost' IDENTIFIED BY 'your_password';
-   GRANT ALL PRIVILEGES ON stock.* TO 'stock_user'@'localhost';
-   FLUSH PRIVILEGES;
-   ```
-
 ### 4. 配置环境变量
 
 .env文件已配置为使用以下数据库连接信息：
@@ -43,16 +29,6 @@ SECRET_KEY=your-secret-key
 ```
 
 如果需要修改数据库连接信息，请编辑.env文件。
-
-### 5. 初始化数据库
-
-在项目根目录下运行以下命令初始化数据库表：
-
-```bash
-flask db init
-flask db migrate -m "Initial migration"
-flask db upgrade
-```
 
 ## 运行项目
 

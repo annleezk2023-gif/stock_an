@@ -2,17 +2,16 @@
 {% set action_url = "/fund_ana" %}
 {% block content %}
         <!-- 数据表格 -->
-        <table>
+        <table class="fund-ana-table">
             <!-- 表格列标题行 -->
             <thead>
                 <tr style="background-color: #f2f2f2;">
-                    <th>行业</th>
-                    <th>TOP股票</th>
-                    <th>标签</th>
-                    <th class="number-cell">PE分位</th>
-                    <th>备注</th>
-                    <th>风险备注</th>
-                    <th>操作</th>
+                    <th style="width: 100px;">行业</th>
+                    <th style="width: 800px;">TOP股票</th>
+                    <th style="width: 60px;">标签</th>
+                    <th style="width: 130px;">PE分位</th>
+                    <th style="width: 450px;">备注</th>
+                    <th style="width: 50px;">操作</th>
                 </tr>
             </thead>
 
@@ -24,7 +23,7 @@
                             <td>{{ fund.industry }}</td>
                             <td>
                                 {% if fund.top_stock %}
-                                    <strong>TOP股票：</strong><br/>
+                                    <strong>TOP股票：</strong>
                                     {% set codes = fund.top_stock.split(',') %}
                                     {% for code in codes %}
                                         {% set stock_info = stock_dict.get(code) %}
@@ -35,20 +34,20 @@
                                 {% else %}
                                     -
                                 {% endif %}
-                                {% if fund.growth_stock %}
-                                    <br/><br/><strong>成长型股票：</strong><br/>
-                                    {% set growth_codes = fund.growth_stock.split(',') %}
-                                    {% for code in growth_codes %}
+                                {% if fund.fenghong_3_stock %}
+                                    <br/><strong><a href="http://localhost:5000/stock_basic?code_name=&code=&status=1&bukan=1&ana_type=1&auto_tag=3股息&auto_tags_count=&industry={{ fund.industry }}" target="_blank">3股息</a>：</strong>
+                                    {% set fenghong_3_codes = fund.fenghong_3_stock.split(',') %}
+                                    {% for code in fenghong_3_codes %}
                                         {% set stock_info = stock_dict.get(code) %}
                                         {% if stock_info %}
                                             <a href="/stock_trade/{{ code }}" target="_blank">{{ stock_info.code_name }}</a>{% if not loop.last %}, {% endif %}
                                         {% endif %}
                                     {% endfor %}
                                 {% endif %}
-                                {% if fund.fenghong_stock %}
-                                    <br/><br/><strong>分红型股票：</strong><br/>
-                                    {% set fenghong_codes = fund.fenghong_stock.split(',') %}
-                                    {% for code in fenghong_codes %}
+                                {% if fund.growth_15_stock %}
+                                    <br/><strong><a href="http://localhost:5000/stock_basic?code_name=&code=&status=1&bukan=1&ana_type=1&auto_tag=15成长&auto_tags_count=&industry={{ fund.industry }}" target="_blank">15成长</a>：</strong>
+                                    {% set growth_15_codes = fund.growth_15_stock.split(',') %}
+                                    {% for code in growth_15_codes %}
                                         {% set stock_info = stock_dict.get(code) %}
                                         {% if stock_info %}
                                             <a href="/stock_trade/{{ code }}" target="_blank">{{ stock_info.code_name }}</a>{% if not loop.last %}, {% endif %}
@@ -59,18 +58,17 @@
                             <td>
                                 {% if fund.sort_tag %}
                                     {% if fund.sort_tag == 3 %}
-                                        <span style="background-color: #FF5722; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">3重点</span>
+                                        <span style="background-color: #FF5722; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">重点</span>
                                     {% elif fund.sort_tag == 2 %}
-                                        <span style="background-color: #FF9800; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">2观察</span>
+                                        <span style="background-color: #FF9800; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">观察</span>
                                     {% elif fund.sort_tag == 1 %}
-                                        <span style="background-color: #9E9E9E; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">1不看</span>
+                                        <span style="background-color: #9E9E9E; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">不看</span>
                                     {% endif %}
                                 {% else %}
                                     -
                                 {% endif %}
                             </td>
                             <td>
-                                ------ PE分位 ------<br/>
                                 1年
                                 {% if fund.pe_year_1_percent %}
                                     {% if fund.pe_year_1_percent < 20 %}
@@ -116,12 +114,8 @@
                             </td>
                             <td>
                                 <div style="word-wrap: break-word;">
-                                    {{ fund.remark or '' }}
-                                </div>
-                            </td>
-                            <td>
-                                <div style="word-wrap: break-word; color: red;">
-                                    {{ fund.risk_memo or '' }}
+                                    备注：{{ fund.remark or '-' }}<br/>
+                                    风险备注：{{ fund.risk_memo or '-' }}
                                 </div>
                             </td>
                             <td>
@@ -139,21 +133,21 @@
     
     <!-- 编辑弹窗 -->
     <div id="fundModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-        <div style="background-color: white; padding: 20px; border-radius: 8px; width: 500px; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
+        <div style="background-color: white; padding: 20px; border-radius: 8px; width: 700px; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
             <h2>编辑行业 - <span id="modalIndustryName"></span></h2>
             <input type="hidden" id="modalFundId">
             
             <div style="margin: 20px 0;">
-                <p>排序标签：</p>
-                <div id="sortTags" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                排序标签：
+                <div id="sortTags" style="display: flex; gap: 10px;">
                     <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
-                        <input type="radio" name="sort_tag" value="3" style="margin-right: 5px;">3重点
+                        <input type="radio" name="sort_tag" value="3" style="margin-right: 5px;">重点
                     </label>
                     <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
-                        <input type="radio" name="sort_tag" value="2" style="margin-right: 5px;">2观察
+                        <input type="radio" name="sort_tag" value="2" style="margin-right: 5px;">观察
                     </label>
                     <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
-                        <input type="radio" name="sort_tag" value="1" style="margin-right: 5px;">1不看
+                        <input type="radio" name="sort_tag" value="1" style="margin-right: 5px;">不看
                     </label>
                     <label style="display: inline-flex; align-items: center; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">
                         <input type="radio" name="sort_tag" value="0" style="margin-right: 5px;">无
@@ -164,11 +158,8 @@
             <div style="margin: 20px 0;">
                 <p>备注：</p>
                 <textarea id="modalRemark" rows="4" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" maxlength="1000"></textarea>
-            </div>
-            
-            <div style="margin: 20px 0;">
-                <p>风险备注：</p>
-                <input type="text" id="modalRiskMemo" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" maxlength="200">
+                <p style="margin-top: 10px;">风险备注：</p>
+                <textarea id="modalRiskMemo" rows="4" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" maxlength="1000"></textarea>
             </div>
             
             <div style="text-align: right; margin-top: 20px;">
@@ -187,8 +178,22 @@
             // 获取当前数据
             const row = document.querySelector(`button[onclick*="${fundId}"]`).closest('tr');
             const sortTag = row.querySelector('td:nth-child(3)').textContent.trim();
-            const remark = row.querySelector('button').dataset.remark;
-            const riskMemo = row.querySelector('button').dataset.riskMemo;
+            const remarkCell = row.querySelector('td:nth-child(5)');
+            
+            let remark = '';
+            let riskMemo = '';
+            if (remarkCell) {
+                const cellText = remarkCell.textContent;
+                const parts = cellText.split('风险备注：');
+                if (parts.length > 1) {
+                    const remarkPart = parts[0].replace('备注：', '').trim();
+                    remark = remarkPart === '-' ? '' : remarkPart;
+                    riskMemo = parts[1].trim() === '-' ? '' : parts[1].trim();
+                } else {
+                    const remarkPart = cellText.replace('备注：', '').trim();
+                    remark = remarkPart === '-' ? '' : remarkPart;
+                }
+            }
             
             // 设置排序标签
             const sortTagRadios = document.querySelectorAll('input[name="sort_tag"]');
@@ -196,12 +201,14 @@
                 radio.checked = false;
             });
             
-            if (sortTag.includes('3重点')) {
+            if (sortTag.includes('重点')) {
                 document.querySelector('input[name="sort_tag"][value="3"]').checked = true;
-            } else if (sortTag.includes('2观察')) {
+            } else if (sortTag.includes('观察')) {
                 document.querySelector('input[name="sort_tag"][value="2"]').checked = true;
-            } else if (sortTag.includes('1不看')) {
+            } else if (sortTag.includes('不看')) {
                 document.querySelector('input[name="sort_tag"][value="1"]').checked = true;
+            } else {
+                document.querySelector('input[name="sort_tag"][value="0"]').checked = true;
             }
             
             // 设置备注
@@ -225,8 +232,8 @@
                 alert('备注不能超过1000个文字');
                 return;
             }
-            if (riskMemo.length > 200) {
-                alert('风险备注不能超过200个文字');
+            if (riskMemo.length > 1000) {
+                alert('风险备注不能超过1000个文字');
                 return;
             }
             
@@ -246,7 +253,7 @@
             .then(data => {
                 if (data.success) {
                     closeModal();
-                    location.reload();
+                    updateRow(fundId, sortTag, remark, riskMemo);
                 } else {
                     alert('保存失败: ' + data.message);
                 }
@@ -254,6 +261,38 @@
             .catch(error => {
                 alert('保存失败: ' + error);
             });
+        }
+        
+        // 更新行数据
+        function updateRow(fundId, sortTag, remark, riskMemo) {
+            const row = document.querySelector(`button[onclick*="${fundId}"]`).closest('tr');
+            if (!row) return;
+            
+            const tagCell = row.querySelector('td:nth-child(3)');
+            const remarkCell = row.querySelector('td:nth-child(5)');
+            
+            if (tagCell) {
+                let tagHtml = '';
+                if (sortTag === 3) {
+                    tagHtml = '<span style="background-color: #FF5722; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">重点</span>';
+                } else if (sortTag === 2) {
+                    tagHtml = '<span style="background-color: #FF9800; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">观察</span>';
+                } else if (sortTag === 1) {
+                    tagHtml = '<span style="background-color: #9E9E9E; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 4px;">不看</span>';
+                } else {
+                    tagHtml = '-';
+                }
+                tagCell.innerHTML = tagHtml;
+            }
+            
+            if (remarkCell) {
+                const remarkDiv = remarkCell.querySelector('div');
+                if (remarkDiv) {
+                    const safeRemark = remark.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const safeRiskMemo = riskMemo.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    remarkDiv.innerHTML = `备注：${safeRemark || '-'}<br/>风险备注：${safeRiskMemo || '-'}`;
+                }
+            }
         }
         
         // 关闭弹窗
