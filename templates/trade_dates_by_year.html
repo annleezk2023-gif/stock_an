@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="/static/css/styles.css">
     <style>
         .container {
-            max-width: 1920px;
             margin: 0 auto;
             background-color: white;
             padding: 20px;
@@ -16,7 +15,6 @@
         }
         table {
             width: 100%;
-            max-width: 1920px;
             border-collapse: collapse;
             margin: 20px 0;
             table-layout: fixed;
@@ -45,7 +43,7 @@
         <h1>{{ year }}年交易日数据</h1>
         
         <!-- 返回链接 -->
-        <a href="{{ url_for('trade_dates_yearly') }}" class="back-link">返回按年份聚合页面</a>
+        <a href="{{ url_for('trade_dates_yearly') }}" class="back-link" target="_blank">返回按年份聚合页面</a>
         
         <!-- 显示flash消息 -->
         {% with messages = get_flashed_messages() %}

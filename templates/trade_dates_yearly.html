@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="/static/css/styles.css">
     <style>
         .container {
-            max-width: 1920px;
             margin: 0 auto;
             background-color: white;
             padding: 20px;
@@ -16,7 +15,6 @@
         }
         table {
             width: 100%;
-            max-width: 1920px;
             border-collapse: collapse;
             margin: 20px 0;
             table-layout: fixed;
@@ -65,7 +63,7 @@
                 {% for item in yearly_data %}
                 <tr>
                     <td>{{ item.year }}</td>
-                    <td><a href="{{ url_for('trade_dates_by_year', year=item.year) }}" class="count-link">{{ item.count }}</a></td>
+                    <td><a href="{{ url_for('trade_dates_by_year', year=item.year) }}" class="count-link" target="_blank">{{ item.count }}</a></td>
                 </tr>
                 {% endfor %}
             </tbody>

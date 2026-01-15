@@ -45,6 +45,10 @@ CREATE TABLE `fund_ana` (
   `pe_year_3_percent` decimal(5,2) DEFAULT NULL COMMENT '3年PE分位值',
   `pe_year_5_percent` decimal(5,2) DEFAULT NULL COMMENT '5年PE分位值',
   `pe_year_10_percent` decimal(5,2) DEFAULT NULL COMMENT '10年PE分位值',
+  `ps_year_1_percent` decimal(5,2) DEFAULT NULL COMMENT '1年PS分位值',
+  `ps_year_3_percent` decimal(5,2) DEFAULT NULL COMMENT '3年PS分位值',
+  `ps_year_5_percent` decimal(5,2) DEFAULT NULL COMMENT '5年PS分位值',
+  `ps_year_10_percent` decimal(5,2) DEFAULT NULL COMMENT '10年PS分位值',
   `top_etf` varchar(100) DEFAULT NULL COMMENT '行业TOP ETF的代码',
   `etf_year_1_percent` decimal(5,2) DEFAULT NULL COMMENT '1年point分位值',
   `etf_year_3_percent` decimal(5,2) DEFAULT NULL COMMENT '3年point分位值',
@@ -123,6 +127,9 @@ CREATE TABLE `bao_stock_basic` (
   `risk_memo` varchar(200) DEFAULT NULL COMMENT '风险备注',
   `trade_score` int(2) DEFAULT NULL COMMENT '公司打分，用于量化交易；-1表示黑名单',
   `trade_score_reason` varchar(1000) DEFAULT NULL COMMENT '公司打分的原因',
+  `k_date` date DEFAULT NULL COMMENT '交易日期，格式：YYYY-MM-DD',
+  `close` float DEFAULT NULL COMMENT '收盘价',
+  `total_market_value` float DEFAULT NULL COMMENT '总市值=交易量/换手率*开盘价，单位：亿',
   PRIMARY KEY (`id`),
   UNIQUE KEY `code` (`code`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5481 DEFAULT CHARSET=utf8mb4 COMMENT='证券基本资料表 - 股票类型';

@@ -1,4 +1,4 @@
-{% extends "stock_common.html" %}
+{% extends "stock_basic_search.html" %}
 {% set action_url = "/fund_ana" %}
 {% block content %}
         <!-- 数据表格 -->
@@ -9,7 +9,7 @@
                     <th style="width: 100px;">行业</th>
                     <th style="width: 800px;">TOP股票</th>
                     <th style="width: 60px;">标签</th>
-                    <th style="width: 130px;">PE分位</th>
+                    <th style="width: 300px;">PE/PS分位1/3/5年</th>
                     <th style="width: 450px;">备注</th>
                     <th style="width: 50px;">操作</th>
                 </tr>
@@ -23,7 +23,8 @@
                             <td>{{ fund.industry }}</td>
                             <td>
                                 {% if fund.top_stock %}
-                                    <strong>TOP股票：</strong>
+                                    <strong><a href="http://localhost:5000/stock_basic?status=1&bukan=1&ana_type=1&query_all=1&industry={{ fund.industry }}" target="_blank">TOP股票</a>
+                                        <a href="http://localhost:5000/stock_basic?status=1&bukan=1&query_all=1&industry={{ fund.industry }}" target="_blank">备注</a>：</strong>
                                     {% set codes = fund.top_stock.split(',') %}
                                     {% for code in codes %}
                                         {% set stock_info = stock_dict.get(code) %}
@@ -35,7 +36,8 @@
                                     -
                                 {% endif %}
                                 {% if fund.fenghong_3_stock %}
-                                    <br/><strong><a href="http://localhost:5000/stock_basic?code_name=&code=&status=1&bukan=1&ana_type=1&auto_tag=3股息&auto_tags_count=&industry={{ fund.industry }}" target="_blank">3股息</a>：</strong>
+                                    <br/><strong><a href="http://localhost:5000/stock_basic?status=1&bukan=1&ana_type=1&query_all=1&auto_tag=3股息&industry={{ fund.industry }}" target="_blank">3股息</a>
+                                        <a href="http://localhost:5000/stock_basic?status=1&bukan=1&query_all=1&auto_tag=3股息&industry={{ fund.industry }}" target="_blank">备注</a>：</strong>
                                     {% set fenghong_3_codes = fund.fenghong_3_stock.split(',') %}
                                     {% for code in fenghong_3_codes %}
                                         {% set stock_info = stock_dict.get(code) %}
@@ -45,9 +47,32 @@
                                     {% endfor %}
                                 {% endif %}
                                 {% if fund.growth_15_stock %}
-                                    <br/><strong><a href="http://localhost:5000/stock_basic?code_name=&code=&status=1&bukan=1&ana_type=1&auto_tag=15成长&auto_tags_count=&industry={{ fund.industry }}" target="_blank">15成长</a>：</strong>
+                                    <br/><strong><a href="http://localhost:5000/stock_basic?status=1&bukan=1&ana_type=1&query_all=1&auto_tag=15成长&industry={{ fund.industry }}" target="_blank">15成长</a>
+                                        <a href="http://localhost:5000/stock_basic?status=1&bukan=1&query_all=1&auto_tag=15成长&industry={{ fund.industry }}" target="_blank">备注</a>：</strong>
                                     {% set growth_15_codes = fund.growth_15_stock.split(',') %}
                                     {% for code in growth_15_codes %}
+                                        {% set stock_info = stock_dict.get(code) %}
+                                        {% if stock_info %}
+                                            <a href="/stock_trade/{{ code }}" target="_blank">{{ stock_info.code_name }}</a>{% if not loop.last %}, {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                                {% if fund.growth_5_stock %}
+                                    <br/><strong><a href="http://localhost:5000/stock_basic?status=1&bukan=1&ana_type=1&query_all=1&auto_tag=5成长大股&industry={{ fund.industry }}" target="_blank">5成长大股</a>
+                                        <a href="http://localhost:5000/stock_basic?status=1&bukan=1&query_all=1&auto_tag=5成长大股&industry={{ fund.industry }}" target="_blank">备注</a>：</strong>
+                                    {% set growth_5_codes = fund.growth_5_stock.split(',') %}
+                                    {% for code in growth_5_codes %}
+                                        {% set stock_info = stock_dict.get(code) %}
+                                        {% if stock_info %}
+                                            <a href="/stock_trade/{{ code }}" target="_blank">{{ stock_info.code_name }}</a>{% if not loop.last %}, {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                                {% if fund.fenghong_1_growth_5_stock %}
+                                    <br/><strong><a href="http://localhost:5000/stock_basic?status=1&bukan=1&ana_type=1&query_all=1&auto_tag=1股息5成长&industry={{ fund.industry }}" target="_blank">1股息5成长</a>
+                                        <a href="http://localhost:5000/stock_basic?status=1&bukan=1&query_all=1&auto_tag=1股息5成长&industry={{ fund.industry }}" target="_blank">备注</a>：</strong>
+                                    {% set fenghong_1_growth_5_codes = fund.fenghong_1_growth_5_stock.split(',') %}
+                                    {% for code in fenghong_1_growth_5_codes %}
                                         {% set stock_info = stock_dict.get(code) %}
                                         {% if stock_info %}
                                             <a href="/stock_trade/{{ code }}" target="_blank">{{ stock_info.code_name }}</a>{% if not loop.last %}, {% endif %}
@@ -69,46 +94,134 @@
                                 {% endif %}
                             </td>
                             <td>
-                                1年
-                                {% if fund.pe_year_1_percent %}
-                                    {% if fund.pe_year_1_percent < 20 %}
-                                        <span style="color: green;">{{ '%.1f' | format(fund.pe_year_1_percent) }}%</span>
-                                    {% elif fund.pe_year_1_percent > 80 %}
-                                        <span style="color: red;">{{ '%.1f' | format(fund.pe_year_1_percent) }}%</span>
+                                <strong>3股息</strong>
+                                PE
+                                {% if fund.fenghong_3_pe_year_1_percent %}
+                                    {% if fund.fenghong_3_pe_year_1_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.fenghong_3_pe_year_1_percent) }}%</span>
+                                    {% elif fund.fenghong_3_pe_year_1_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.fenghong_3_pe_year_1_percent) }}%</span>
                                     {% else %}
-                                        {{ '%.1f' | format(fund.pe_year_1_percent) }}%
+                                        {{ '%.1f' | format(fund.fenghong_3_pe_year_1_percent) }}%
                                     {% endif %}
                                 {% else %}
                                     -
                                 {% endif %}
-                                {% if fund.pe_year_3_percent %}
-                                    <br/>3年
-                                    {% if fund.pe_year_3_percent < 20 %}
-                                        <span style="color: green;">{{ '%.1f' | format(fund.pe_year_3_percent) }}%</span>
-                                    {% elif fund.pe_year_3_percent > 80 %}
-                                        <span style="color: red;">{{ '%.1f' | format(fund.pe_year_3_percent) }}%</span>
+                                {% if fund.fenghong_3_pe_year_3_percent %}
+                                    
+                                    {% if fund.fenghong_3_pe_year_3_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.fenghong_3_pe_year_3_percent) }}%</span>
+                                    {% elif fund.fenghong_3_pe_year_3_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.fenghong_3_pe_year_3_percent) }}%</span>
                                     {% else %}
-                                        {{ '%.1f' | format(fund.pe_year_3_percent) }}%
+                                        {{ '%.1f' | format(fund.fenghong_3_pe_year_3_percent) }}%
                                     {% endif %}
                                 {% endif %}
-                                {% if fund.pe_year_5_percent %}
-                                    <br/>5年
-                                    {% if fund.pe_year_5_percent < 20 %}
-                                        <span style="color: green;">{{ '%.1f' | format(fund.pe_year_5_percent) }}%</span>
-                                    {% elif fund.pe_year_5_percent > 80 %}
-                                        <span style="color: red;">{{ '%.1f' | format(fund.pe_year_5_percent) }}%</span>
+                                {% if fund.fenghong_3_pe_year_5_percent %}
+                                    
+                                    {% if fund.fenghong_3_pe_year_5_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.fenghong_3_pe_year_5_percent) }}%</span>
+                                    {% elif fund.fenghong_3_pe_year_5_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.fenghong_3_pe_year_5_percent) }}%</span>
                                     {% else %}
-                                        {{ '%.1f' | format(fund.pe_year_5_percent) }}%
+                                        {{ '%.1f' | format(fund.fenghong_3_pe_year_5_percent) }}%
                                     {% endif %}
                                 {% endif %}
-                                {% if fund.pe_year_10_percent %}
-                                    <br/>10年
-                                    {% if fund.pe_year_10_percent < 20 %}
-                                        <span style="color: green;">{{ '%.1f' | format(fund.pe_year_10_percent) }}%</span>
-                                    {% elif fund.pe_year_10_percent > 80 %}
-                                        <span style="color: red;">{{ '%.1f' | format(fund.pe_year_10_percent) }}%</span>
+                                <br/>
+                                PS
+                                {% if fund.fenghong_3_ps_year_1_percent %}
+                                    
+                                    {% if fund.fenghong_3_ps_year_1_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.fenghong_3_ps_year_1_percent) }}%</span>
+                                    {% elif fund.fenghong_3_ps_year_1_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.fenghong_3_ps_year_1_percent) }}%</span>
                                     {% else %}
-                                        {{ '%.1f' | format(fund.pe_year_10_percent) }}%
+                                        {{ '%.1f' | format(fund.fenghong_3_ps_year_1_percent) }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if fund.fenghong_3_ps_year_3_percent %}
+                                    
+                                    {% if fund.fenghong_3_ps_year_3_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.fenghong_3_ps_year_3_percent) }}%</span>
+                                    {% elif fund.fenghong_3_ps_year_3_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.fenghong_3_ps_year_3_percent) }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(fund.fenghong_3_ps_year_3_percent) }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if fund.fenghong_3_ps_year_5_percent %}
+                                    
+                                    {% if fund.fenghong_3_ps_year_5_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.fenghong_3_ps_year_5_percent) }}%</span>
+                                    {% elif fund.fenghong_3_ps_year_5_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.fenghong_3_ps_year_5_percent) }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(fund.fenghong_3_ps_year_5_percent) }}%
+                                    {% endif %}
+                                {% endif %}
+                                <br/>
+                                <strong>15成长</strong>PE
+                                {% if fund.growth_15_pe_year_1_percent %}
+                                    {% if fund.growth_15_pe_year_1_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.growth_15_pe_year_1_percent) }}%</span>
+                                    {% elif fund.growth_15_pe_year_1_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.growth_15_pe_year_1_percent) }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(fund.growth_15_pe_year_1_percent) }}%
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                                {% if fund.growth_15_pe_year_3_percent %}
+                                    
+                                    {% if fund.growth_15_pe_year_3_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.growth_15_pe_year_3_percent) }}%</span>
+                                    {% elif fund.growth_15_pe_year_3_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.growth_15_pe_year_3_percent) }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(fund.growth_15_pe_year_3_percent) }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if fund.growth_15_pe_year_5_percent %}
+                                    
+                                    {% if fund.growth_15_pe_year_5_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.growth_15_pe_year_5_percent) }}%</span>
+                                    {% elif fund.growth_15_pe_year_5_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.growth_15_pe_year_5_percent) }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(fund.growth_15_pe_year_5_percent) }}%
+                                    {% endif %}
+                                {% endif %}
+                                <br/>
+                                PS
+                                {% if fund.growth_15_ps_year_1_percent %}
+                                    
+                                    {% if fund.growth_15_ps_year_1_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.growth_15_ps_year_1_percent) }}%</span>
+                                    {% elif fund.growth_15_ps_year_1_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.growth_15_ps_year_1_percent) }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(fund.growth_15_ps_year_1_percent) }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if fund.growth_15_ps_year_3_percent %}
+                                    
+                                    {% if fund.growth_15_ps_year_3_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.growth_15_ps_year_3_percent) }}%</span>
+                                    {% elif fund.growth_15_ps_year_3_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.growth_15_ps_year_3_percent) }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(fund.growth_15_ps_year_3_percent) }}%
+                                    {% endif %}
+                                {% endif %}
+                                {% if fund.growth_15_ps_year_5_percent %}
+                                    
+                                    {% if fund.growth_15_ps_year_5_percent < 20 %}
+                                        <span style="color: green;">{{ '%.1f' | format(fund.growth_15_ps_year_5_percent) }}%</span>
+                                    {% elif fund.growth_15_ps_year_5_percent > 80 %}
+                                        <span style="color: red;">{{ '%.1f' | format(fund.growth_15_ps_year_5_percent) }}%</span>
+                                    {% else %}
+                                        {{ '%.1f' | format(fund.growth_15_ps_year_5_percent) }}%
                                     {% endif %}
                                 {% endif %}
                             </td>

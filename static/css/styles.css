@@ -21,7 +21,6 @@ h1 {
 /* 表格样式 */
 table {
     width: 100%;
-    max-width: 1920px;
     border-collapse: collapse;
     margin-top: 20px;
 }

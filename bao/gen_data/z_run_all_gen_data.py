@@ -34,6 +34,7 @@ if __name__ == '__main__':
 
         import a_trade_pe_data
         a_trade_pe_data.bu_trade_data(conn=conn)
+        a_trade_pe_data.bu_bao_stock_basic(conn=conn)
 
         logger.info("预处理空数据完成")
 

@@ -66,6 +66,9 @@ class BaoStockBasic(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     trade_score = db.Column(db.Float, comment='公司打分，用于量化交易；-1表示黑名单')
     trade_score_reason = db.Column(db.String(1000), comment='公司打分的原因')
+    k_date = db.Column(db.Date, comment='最新K线日期')
+    close = db.Column(db.Float, comment='最新收盘价')
+    total_market_value = db.Column(db.Float, comment='总市值')
 
 # 定义非股票基本信息模型
 class BaoNoStockBasic(db.Model):
@@ -131,6 +134,10 @@ class FundAna(db.Model):
     pe_year_3_percent = db.Column(db.Float, comment='3年PE分位值')
     pe_year_5_percent = db.Column(db.Float, comment='5年PE分位值')
     pe_year_10_percent = db.Column(db.Float, comment='10年PE分位值')
+    ps_year_1_percent = db.Column(db.Float, comment='1年PS分位值')
+    ps_year_3_percent = db.Column(db.Float, comment='3年PS分位值')
+    ps_year_5_percent = db.Column(db.Float, comment='5年PS分位值')
+    ps_year_10_percent = db.Column(db.Float, comment='10年PS分位值')
     top_etf = db.Column(db.String(100), comment='行业TOP ETF的代码')
     etf_year_1_percent = db.Column(db.Float, comment='1年point分位值')
     etf_year_3_percent = db.Column(db.Float, comment='3年point分位值')
@@ -344,7 +351,7 @@ def get_stock_basic_query_sql(code_name='', code='', industry=None, status='1', 
         page = max(1, int(page))
         per_page = max(1, int(per_page))
         # 确保每页数量是可选的值之一
-        if per_page not in [100, 200, 500]:
+        if per_page not in [100, 200, 500, 9999]:
             per_page = 100
         
         # 计算偏移量
@@ -404,6 +411,30 @@ def get_stock_basic_query_sql(code_name='', code='', industry=None, status='1', 
         results = db.session.execute(text(base_sql), params).mappings().all()
         return results
 
+# 定义tags的优先级顺序
+TAG_PRIORITY = {
+    '重点': 0,
+    '观察': 1,
+    '垄断': 2,
+    '半垄断': 3,
+    '量化': 4,
+    '': 5,
+    '不看': 6
+}
+
+# 获取优先级最高的标签
+def get_highest_priority_tag(tags):
+    if tags and isinstance(tags, list) and len(tags) > 0:
+        highest_priority_tag = None
+        highest_priority = 999
+        for tag in tags:
+            priority = TAG_PRIORITY.get(tag, 5)
+            if priority < highest_priority:
+                highest_priority = priority
+                highest_priority_tag = tag
+        return highest_priority_tag if highest_priority_tag else ''
+    return ''
+
 
 # 显示所有股票基本信息的页面
 @app.route('/stock_basic')
@@ -412,6 +443,7 @@ def stock_basic_page():
         # 获取查询参数
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 100, type=int)
+        query_all = request.args.get('query_all', '0', type=int)
         code_name = request.args.get('code_name', '').strip()
         code = request.args.get('code', '').strip()
         industry = request.args.getlist('industry')
@@ -422,8 +454,12 @@ def stock_basic_page():
         ana_type = request.args.get('ana_type', '0', type=int)
         bukan = request.args.get('bukan', '0', type=int)
         
+        # 如果选中"查询全部"，则设置每页数量为9999
+        if query_all == 1:
+            per_page = 9999
+        
         # 确保每页数量是可选的值之一
-        if per_page not in [100, 200, 500]:
+        if per_page not in [100, 200, 500, 9999]:
             per_page = 100
         
         # 调用通用方法获取分页对象
@@ -443,7 +479,8 @@ def stock_basic_page():
         
         if ana_type == 1:
             conn = db.session.connection()
-            # 提取3年的K线信息
+            
+            # 提取K线信息
             for cur_stock in stock_basics:
                 trade_table_name = "bao_stock_trade_" + cur_stock.code[-1]
                 kline_sql = f"""SELECT * FROM {trade_table_name} WHERE code = '{cur_stock.code}' ORDER BY date DESC LIMIT 1"""
@@ -481,9 +518,34 @@ def stock_basic_page():
                     cur_stock.ana = ana_result
                 else:
                     cur_stock.ana = None
+                    
+                # 获取trade表的pe_year_1_percent和ps_year_1_percent
+                if cur_stock.last_kline:
+                    cur_stock.pe_ps_sum = (cur_stock.last_kline.pe_year_1_percent or 0) + (cur_stock.last_kline.ps_year_1_percent or 0)
+                else:
+                    cur_stock.pe_ps_sum = 0
+                    
+                # 获取tags用于排序，以优先级最高的为准
+                cur_stock.tag_for_sort = get_highest_priority_tag(cur_stock.tags)
+            
             conn.close()
+            
+            # 进行排序：先按tags优先级排序，再按pe_ps_sum从小到大排序
+            stock_basics.sort(key=lambda x: (
+                TAG_PRIORITY.get(x.tag_for_sort, 5),
+                x.pe_ps_sum
+            ))
+            
             return render_template('stock_basic_ana.html', stock_basics=stock_basics, pagination=pagination, per_page=per_page)
         else:
+            for cur_stock in stock_basics:
+                # 获取tags用于排序，以优先级最高的为准
+                cur_stock.tag_for_sort = get_highest_priority_tag(cur_stock.tags)
+            
+            # 进行排序：先按tags优先级排序，再按pe_ps_sum从小到大排序
+            stock_basics.sort(key=lambda x: (
+                TAG_PRIORITY.get(x.tag_for_sort, 5)
+            ))
             return render_template('stock_basic.html', stock_basics=stock_basics, pagination=pagination, per_page=per_page)
     except Exception as e:
         logger.error(f"获取股票基本信息失败: {e}")
@@ -678,7 +740,9 @@ def fund_ana_page():
         def sort_key(fund):
             sort_priority = fund.sort_tag if fund.sort_tag else 0
             pe_value = fund.pe_year_1_percent if fund.pe_year_1_percent is not None else 999999
-            return (-sort_priority, pe_value)
+            ps_value = fund.ps_year_1_percent if fund.ps_year_1_percent is not None else 999999
+            total_value = pe_value + ps_value
+            return (-sort_priority, total_value)
         
         fund_anas_sorted = sorted(fund_anas, key=sort_key)
         
@@ -695,15 +759,33 @@ def fund_ana_page():
             
             growth_15_stocks = []
             fenghong_3_stocks = []
+            growth_5_stocks = []
+            fenghong_1_growth_5_stocks = []
             for stock in stocks:
                 if stock.auto_tags:
                     if '15成长' in stock.auto_tags:
-                        growth_15_stocks.append(stock.code)
+                        growth_15_stocks.append(stock)
                     if '3股息' in stock.auto_tags:
-                        fenghong_3_stocks.append(stock.code)
+                        fenghong_3_stocks.append(stock)
+                    if '5成长大股' in stock.auto_tags:
+                        growth_5_stocks.append(stock)
+                    if '1股息5成长' in stock.auto_tags:
+                        fenghong_1_growth_5_stocks.append(stock)
             
-            fund.growth_15_stock = ','.join(growth_15_stocks) if growth_15_stocks else None
-            fund.fenghong_3_stock = ','.join(fenghong_3_stocks) if fenghong_3_stocks else None
+            # 按市值倒序排序
+            growth_15_stocks.sort(key=lambda x: x.total_market_value or 0, reverse=True)
+            fenghong_3_stocks.sort(key=lambda x: x.total_market_value or 0, reverse=True)
+            growth_5_stocks.sort(key=lambda x: x.total_market_value or 0, reverse=True)
+            fenghong_1_growth_5_stocks.sort(key=lambda x: x.total_market_value or 0, reverse=True)
+            
+            # "5成长大股"和"1股息5成长"只取前10位
+            growth_5_stocks = growth_5_stocks[:10]
+            fenghong_1_growth_5_stocks = fenghong_1_growth_5_stocks[:10]
+            
+            fund.growth_15_stock = ','.join([stock.code for stock in growth_15_stocks]) if growth_15_stocks else None
+            fund.fenghong_3_stock = ','.join([stock.code for stock in fenghong_3_stocks]) if fenghong_3_stocks else None
+            fund.growth_5_stock = ','.join([stock.code for stock in growth_5_stocks]) if growth_5_stocks else None
+            fund.fenghong_1_growth_5_stock = ','.join([stock.code for stock in fenghong_1_growth_5_stocks]) if fenghong_1_growth_5_stocks else None
         
         all_codes = []
         for fund in fund_anas_sorted:
@@ -713,10 +795,117 @@ def fund_ana_page():
                 all_codes.extend(fund.growth_15_stock.split(','))
             if fund.fenghong_3_stock:
                 all_codes.extend(fund.fenghong_3_stock.split(','))
+            if fund.growth_5_stock:
+                all_codes.extend(fund.growth_5_stock.split(','))
+            if fund.fenghong_1_growth_5_stock:
+                all_codes.extend(fund.fenghong_1_growth_5_stock.split(','))
         
         stock_dict = {}
         if all_codes:
             stock_dict = {stock.code: stock for stock in all_stocks if stock.code in all_codes}
+        
+        conn = db.session.connection()
+        
+        for fund in fund_anas_sorted:
+            fenghong_3_codes = fund.fenghong_3_stock.split(',') if fund.fenghong_3_stock else []
+            growth_15_codes = fund.growth_15_stock.split(',') if fund.growth_15_stock else []
+            
+            all_codes = list(set(fenghong_3_codes + growth_15_codes))
+            
+            if not all_codes:
+                fund.fenghong_3_pe_year_1_percent = None
+                fund.fenghong_3_pe_year_3_percent = None
+                fund.fenghong_3_pe_year_5_percent = None
+                fund.fenghong_3_ps_year_1_percent = None
+                fund.fenghong_3_ps_year_3_percent = None
+                fund.fenghong_3_ps_year_5_percent = None
+                fund.growth_15_pe_year_1_percent = None
+                fund.growth_15_pe_year_3_percent = None
+                fund.growth_15_pe_year_5_percent = None
+                fund.growth_15_ps_year_1_percent = None
+                fund.growth_15_ps_year_3_percent = None
+                fund.growth_15_ps_year_5_percent = None
+                continue
+            
+            fenghong_3_pe_1_values = []
+            fenghong_3_pe_3_values = []
+            fenghong_3_pe_5_values = []
+            fenghong_3_ps_1_values = []
+            fenghong_3_ps_3_values = []
+            fenghong_3_ps_5_values = []
+            
+            growth_15_pe_1_values = []
+            growth_15_pe_3_values = []
+            growth_15_pe_5_values = []
+            growth_15_ps_1_values = []
+            growth_15_ps_3_values = []
+            growth_15_ps_5_values = []
+            
+            for table_num in range(10):
+                table_name = f"bao_stock_trade_{table_num}"
+                table_codes = [code for code in all_codes if code[-1] == str(table_num)]
+                
+                if not table_codes:
+                    continue
+                
+                code_list_str = ','.join([f"'{code}'" for code in table_codes])
+                sql = f"""SELECT t.code, t.pe_year_1_percent, t.pe_year_3_percent, t.pe_year_5_percent, 
+                           t.ps_year_1_percent, t.ps_year_3_percent, t.ps_year_5_percent
+                           FROM {table_name} t
+                           INNER JOIN (
+                               SELECT code, MAX(date) as max_date 
+                               FROM {table_name} 
+                               WHERE code IN ({code_list_str})
+                               GROUP BY code
+                           ) latest ON t.code = latest.code AND t.date = latest.max_date
+                           WHERE t.code IN ({code_list_str})"""
+                results = conn.execute(text(sql)).fetchall()
+                
+                for result in results:
+                    if result.pe_year_1_percent is not None:
+                        if result.code in fenghong_3_codes:
+                            fenghong_3_pe_1_values.append(result.pe_year_1_percent)
+                        if result.code in growth_15_codes:
+                            growth_15_pe_1_values.append(result.pe_year_1_percent)
+                    if result.pe_year_3_percent is not None:
+                        if result.code in fenghong_3_codes:
+                            fenghong_3_pe_3_values.append(result.pe_year_3_percent)
+                        if result.code in growth_15_codes:
+                            growth_15_pe_3_values.append(result.pe_year_3_percent)
+                    if result.pe_year_5_percent is not None:
+                        if result.code in fenghong_3_codes:
+                            fenghong_3_pe_5_values.append(result.pe_year_5_percent)
+                        if result.code in growth_15_codes:
+                            growth_15_pe_5_values.append(result.pe_year_5_percent)
+                    if result.ps_year_1_percent is not None:
+                        if result.code in fenghong_3_codes:
+                            fenghong_3_ps_1_values.append(result.ps_year_1_percent)
+                        if result.code in growth_15_codes:
+                            growth_15_ps_1_values.append(result.ps_year_1_percent)
+                    if result.ps_year_3_percent is not None:
+                        if result.code in fenghong_3_codes:
+                            fenghong_3_ps_3_values.append(result.ps_year_3_percent)
+                        if result.code in growth_15_codes:
+                            growth_15_ps_3_values.append(result.ps_year_3_percent)
+                    if result.ps_year_5_percent is not None:
+                        if result.code in fenghong_3_codes:
+                            fenghong_3_ps_5_values.append(result.ps_year_5_percent)
+                        if result.code in growth_15_codes:
+                            growth_15_ps_5_values.append(result.ps_year_5_percent)
+            
+            fund.fenghong_3_pe_year_1_percent = sum(fenghong_3_pe_1_values) / len(fenghong_3_pe_1_values) if fenghong_3_pe_1_values else None
+            fund.fenghong_3_pe_year_3_percent = sum(fenghong_3_pe_3_values) / len(fenghong_3_pe_3_values) if fenghong_3_pe_3_values else None
+            fund.fenghong_3_pe_year_5_percent = sum(fenghong_3_pe_5_values) / len(fenghong_3_pe_5_values) if fenghong_3_pe_5_values else None
+            fund.fenghong_3_ps_year_1_percent = sum(fenghong_3_ps_1_values) / len(fenghong_3_ps_1_values) if fenghong_3_ps_1_values else None
+            fund.fenghong_3_ps_year_3_percent = sum(fenghong_3_ps_3_values) / len(fenghong_3_ps_3_values) if fenghong_3_ps_3_values else None
+            fund.fenghong_3_ps_year_5_percent = sum(fenghong_3_ps_5_values) / len(fenghong_3_ps_5_values) if fenghong_3_ps_5_values else None
+            
+            fund.growth_15_pe_year_1_percent = sum(growth_15_pe_1_values) / len(growth_15_pe_1_values) if growth_15_pe_1_values else None
+            fund.growth_15_pe_year_3_percent = sum(growth_15_pe_3_values) / len(growth_15_pe_3_values) if growth_15_pe_3_values else None
+            fund.growth_15_pe_year_5_percent = sum(growth_15_pe_5_values) / len(growth_15_pe_5_values) if growth_15_pe_5_values else None
+            fund.growth_15_ps_year_1_percent = sum(growth_15_ps_1_values) / len(growth_15_ps_1_values) if growth_15_ps_1_values else None
+            fund.growth_15_ps_year_3_percent = sum(growth_15_ps_3_values) / len(growth_15_ps_3_values) if growth_15_ps_3_values else None
+            fund.growth_15_ps_year_5_percent = sum(growth_15_ps_5_values) / len(growth_15_ps_5_values) if growth_15_ps_5_values else None
         
         return render_template('fund_ana.html', fund_anas=fund_anas_sorted, stock_dict=stock_dict)
     except Exception as e:

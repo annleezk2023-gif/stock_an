@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="/static/css/styles.css">
     <style>
         .container {
-            max-width: {{ container_max_width or '1920px' }};
+            max-width: {{ container_max_width or '' }};
         }
     </style>
 </head>
@@ -39,9 +39,10 @@
                                 <input type="checkbox" name="tag" value="量化" {{ 'checked' if '量化' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">量化
                                 <input type="checkbox" name="tag" value="不看" {{ 'checked' if '不看' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">不看
                                 <input type="checkbox" name="tag" value="_BLANK_" {{ 'checked' if '_BLANK_' in (request.args.getlist('tag')|default([])) else '' }} style="margin-right: 5px;">空白
-
+                                <br>
                                 ---------排除：<input type="checkbox" name="bukan" value="1" {{ 'checked' if request.args.get('bukan') == '1' else '' }} style="margin-right: 5px;">不看
                                 ---------<input type="checkbox" name="ana_type" value="1" {{ 'checked' if request.args.get('ana_type') == '1' else '' }} style="margin-right: 5px;">看统计页面
+                                ---------<input type="checkbox" name="query_all" value="1" {{ 'checked' if request.args.get('query_all') == '1' else '' }} style="margin-right: 5px;">查询全部
                         </div>
                         <div style="margin-bottom: 10px;">
                             自动标签：
@@ -79,7 +80,11 @@
                 <option value="100" {{ 'selected' if per_page == 100 else '' }}>100</option>
                 <option value="200" {{ 'selected' if per_page == 200 else '' }}>200</option>
                 <option value="500" {{ 'selected' if per_page == 500 else '' }}>500</option>
+                <option value="9999" {{ 'selected' if per_page == 9999 else '' }}>全部</option>
             </select>
+            {% if per_page == 9999 and pagination %}
+                <span style="margin-left: 20px; color: #666;">查询结果条数：{{ pagination.total }}</span>
+            {% endif %}
         </div>
 
         <script>
@@ -175,6 +180,17 @@
                     params.append('auto_tag', checkbox.value);
                 });
                 
+                // 添加其他checkbox参数
+                if (document.querySelector('input[name="bukan"]:checked')) {
+                    params.set('bukan', '1');
+                }
+                if (document.querySelector('input[name="ana_type"]:checked')) {
+                    params.set('ana_type', '1');
+                }
+                if (document.querySelector('input[name="query_all"]:checked')) {
+                    params.set('query_all', '1');
+                }
+                
                 if (document.getElementById('auto_tags_count').value) {
                     params.set('auto_tags_count', document.getElementById('auto_tags_count').value);
                 }
@@ -218,7 +234,7 @@
         
         <!-- 返回首页链接 -->
         <div class="back-link">
-            <a href="/">返回首页</a>
+            <a href="/" target="_blank">返回首页</a>
         </div>
     </div>
 </body>
