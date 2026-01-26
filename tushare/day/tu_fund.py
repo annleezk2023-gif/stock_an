@@ -26,7 +26,7 @@ def etf_basic_all(conn, pro):
         return
 
     for index, row in df.iterrows():
-        ts_code = row['ts_code']
+        ts_code = tu_common.convert_stock_code_2bao(row['ts_code'])
         csname = row['csname']
         extname = row['extname']
         index_code = row['index_code']
@@ -87,8 +87,9 @@ def etf_basic_all(conn, pro):
 def _insert_fund_daily(conn, df):
     if df.empty:
         return
-    
+        
     for index, row in df.iterrows():
+        ts_code = tu_common.convert_stock_code_2bao(row['ts_code'])
         trade_date_formatted = None
         if pd.notna(row['trade_date']) and row['trade_date'] != '':
             trade_date_formatted = f"{row['trade_date'][:4]}-{row['trade_date'][4:6]}-{row['trade_date'][6:8]}"
@@ -99,11 +100,11 @@ def _insert_fund_daily(conn, df):
             WHERE ts_code = :ts_code AND trade_date = :trade_date
         """
         result = conn.execute(text(query), {
-            'ts_code': row.get('ts_code'),
+            'ts_code': ts_code,
             'trade_date': trade_date_formatted
         }).fetchone()
         if result[0] > 0:
-            logger.info(f"数据己存在: {row.get('ts_code')} {trade_date_formatted}")
+            logger.info(f"数据己存在: {ts_code} {trade_date_formatted}")
             continue
 
         sql = """
@@ -112,7 +113,7 @@ def _insert_fund_daily(conn, df):
         """
         
         conn.execute(text(sql), {
-            'ts_code': row.get('ts_code'),
+            'ts_code': ts_code,
             'trade_date': trade_date_formatted,
             'open': row.get('open'),
             'high': row.get('high'),
@@ -124,6 +125,7 @@ def _insert_fund_daily(conn, df):
             'vol': row.get('vol'),
             'amount': row.get('amount')
         })
+    conn.commit()
 
 def _update_fund_daily_share_size(conn, df):
     if df.empty:
@@ -131,6 +133,7 @@ def _update_fund_daily_share_size(conn, df):
     
     for index, row in df.iterrows():
         trade_date_formatted = None
+        ts_code = tu_common.convert_stock_code_2bao(row['ts_code'])
         if pd.notna(row['trade_date']) and row['trade_date'] != '':
             trade_date_formatted = f"{row['trade_date'][:4]}-{row['trade_date'][4:6]}-{row['trade_date'][6:8]}"
         
@@ -145,13 +148,14 @@ def _update_fund_daily_share_size(conn, df):
         """
         
         conn.execute(text(sql), {
-            'ts_code': row.get('ts_code'),
+            'ts_code': ts_code,
             'trade_date': trade_date_formatted,
             'total_share': row.get('total_share'),
             'total_size': row.get('total_size'),
             'nav': row.get('nav'),
             'exchange': row.get('exchange')
         })
+    conn.commit()
     
 
 def _update_fund_daily_adj_factor(conn, df):
@@ -160,6 +164,7 @@ def _update_fund_daily_adj_factor(conn, df):
     
     for index, row in df.iterrows():
         trade_date_formatted = None
+        ts_code = tu_common.convert_stock_code_2bao(row['ts_code'])
         if pd.notna(row['trade_date']) and row['trade_date'] != '':
             trade_date_formatted = f"{row['trade_date'][:4]}-{row['trade_date'][4:6]}-{row['trade_date'][6:8]}"
         
@@ -171,13 +176,14 @@ def _update_fund_daily_adj_factor(conn, df):
         """
         
         conn.execute(text(sql), {
-            'ts_code': row.get('ts_code'),
+            'ts_code': ts_code,
             'trade_date': trade_date_formatted,
             'adj_factor': row.get('adj_factor')
         })
+    conn.commit()
     
 
-def fund_data_all(conn, pro):
+def etf_k_all(conn, pro):
     #待上市的数据不取
     query = "SELECT ts_code, list_date FROM tu_etf_basic where list_status <> 'P'"
     results = conn.execute(text(query)).fetchall()
@@ -201,39 +207,39 @@ def fund_data_all(conn, pro):
         logger.info(f"开始处理日期段: {start_date_str} 到 {end_date_str}")
         
         for row in results:
-            ts_code = row[0]
+            code = row[0]
             #如果end_date小于list_date，跳过
             if next_date.date() < row[1]:
                 continue
 
-            logger.info(f"开始处理ETF: {ts_code} {row[1]}, 日期段: {start_date_str} 到 {end_date_str}")
+            logger.info(f"开始处理ETF: {code} {row[1]}, 日期段: {start_date_str} 到 {end_date_str}")
 
-            df_daily = pro.fund_daily(ts_code=ts_code, start_date=start_date_str, end_date=end_date_str)
+            df_daily = pro.fund_daily(ts_code=tu_common.convert_stock_code_2tu(code), start_date=start_date_str, end_date=end_date_str)
             if not df_daily.empty:
                 _insert_fund_daily(conn, df_daily)
-                logger.info(f"fund_daily 写入成功: {ts_code} {row[1]}, 记录数: {len(df_daily)}")
+                logger.info(f"fund_daily 写入成功: {code} {row[1]}, 记录数: {len(df_daily)}")
             else:
-                logger.info(f"fund_daily 无数据: {ts_code} {row[1]}, 日期段: {start_date_str} 到 {end_date_str}")
+                logger.info(f"fund_daily 无数据: {code} {row[1]}, 日期段: {start_date_str} 到 {end_date_str}")
             
-            df_share = pro.etf_share_size(ts_code=ts_code, start_date=start_date_str, end_date=end_date_str)
+            df_share = pro.etf_share_size(ts_code=tu_common.convert_stock_code_2tu(code), start_date=start_date_str, end_date=end_date_str)
             if not df_share.empty:
                 _update_fund_daily_share_size(conn, df_share)
-                logger.info(f"etf_share_size 更新成功: {ts_code} {row[1]}, 记录数: {len(df_share)}")
+                logger.info(f"etf_share_size 更新成功: {code} {row[1]}, 记录数: {len(df_share)}")
             else:
-                logger.info(f"etf_share_size 无数据: {ts_code} {row[1]}, 日期段: {start_date_str} 到 {end_date_str}")
+                logger.info(f"etf_share_size 无数据: {code} {row[1]}, 日期段: {start_date_str} 到 {end_date_str}")
             
-            df_adj = pro.fund_adj(ts_code=ts_code, start_date=start_date_str, end_date=end_date_str)
+            df_adj = pro.fund_adj(ts_code=tu_common.convert_stock_code_2tu(code), start_date=start_date_str, end_date=end_date_str)
             if not df_adj.empty:
                 _update_fund_daily_adj_factor(conn, df_adj)
-                logger.info(f"fund_adj 更新成功: {ts_code} {row[1]}, 记录数: {len(df_adj)}")
+                logger.info(f"fund_adj 更新成功: {code} {row[1]}, 记录数: {len(df_adj)}")
             else:
-                logger.info(f"fund_adj 无数据: {ts_code} {row[1]}, 日期段: {start_date_str} 到 {end_date_str}")
+                logger.info(f"fund_adj 无数据: {code} {row[1]}, 日期段: {start_date_str} 到 {end_date_str}")
                 
             conn.commit()
         
         current_date = next_date + timedelta(days=1)
 
-def fund_data_increase(conn, pro):
+def etf_k_increase(conn, pro):
     query = "SELECT ts_code FROM tu_etf_basic"
     results = conn.execute(text(query)).fetchall()
     
@@ -244,31 +250,31 @@ def fund_data_increase(conn, pro):
     end_date_str = datetime.now().strftime('%Y%m%d')
     
     for row in results:
-        ts_code = row[0]
+        code = row[0]
 
         #取己保存数据的日期最大值
-        query_max_date = f"SELECT MAX(trade_date) FROM tu_fund_daily WHERE ts_code = '{ts_code}'"
+        query_max_date = f"SELECT MAX(trade_date) FROM tu_fund_daily WHERE ts_code = '{code}'"
         max_date_result = conn.execute(text(query_max_date)).fetchone()
         max_date = max_date_result[0] if max_date_result[0] else datetime(2007, 1, 1)
         start_date = max_date + timedelta(days=1)
         start_date_str = start_date.strftime('%Y%m%d')
 
-        logger.info(f"开始处理ETF: {ts_code}, 日期段: {start_date_str} 到 {end_date_str}")
+        logger.info(f"开始处理ETF: {code}, 日期段: {start_date_str} 到 {end_date_str}")
 
-        df_daily = pro.fund_daily(ts_code=ts_code, start_date=start_date_str, end_date=end_date_str)
+        df_daily = pro.fund_daily(ts_code=tu_common.convert_stock_code_2tu(code), start_date=start_date_str, end_date=end_date_str)
         if not df_daily.empty:
             _insert_fund_daily(conn, df_daily)
-            logger.info(f"fund_daily 写入成功: {ts_code}, 记录数: {len(df_daily)}")
+            logger.info(f"fund_daily 写入成功: {code}, 记录数: {len(df_daily)}")
         
-        df_share = pro.etf_share_size(ts_code=ts_code, start_date=start_date_str, end_date=end_date_str)
+        df_share = pro.etf_share_size(ts_code=tu_common.convert_stock_code_2tu(code), start_date=start_date_str, end_date=end_date_str)
         if not df_share.empty:
             _update_fund_daily_share_size(conn, df_share)
-            logger.info(f"etf_share_size 更新成功: {ts_code}, 记录数: {len(df_share)}")
+            logger.info(f"etf_share_size 更新成功: {code}, 记录数: {len(df_share)}")
         
-        df_adj = pro.fund_adj(ts_code=ts_code, start_date=start_date_str, end_date=end_date_str)
+        df_adj = pro.fund_adj(ts_code=tu_common.convert_stock_code_2tu(code), start_date=start_date_str, end_date=end_date_str)
         if not df_adj.empty:
             _update_fund_daily_adj_factor(conn, df_adj)
-            logger.info(f"fund_adj 更新成功: {ts_code}, 记录数: {len(df_adj)}")
+            logger.info(f"fund_adj 更新成功: {code}, 记录数: {len(df_adj)}")
             
         conn.commit()
 
@@ -278,11 +284,11 @@ if __name__ == "__main__":
     conn = stock_common.get_db_conn(sql_echo=False)
     
     # 调用函数获取ETF基本信息
-    etf_basic(conn, pro)
+    #etf_basic_all(conn, pro)
     #再获取日K线数据
-    fund_data_all(conn, pro)
+    #etf_k_all(conn, pro)
 
     #增量更新
-    #fund_data_increase(conn, pro)
+    etf_k_increase(conn, pro)
 
     conn.close()

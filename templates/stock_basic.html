@@ -7,6 +7,7 @@
             <thead>
                 <tr style="background-color: #f2f2f2;">
                     <th style="width: 160px;">证券</th>
+                    <th style="width: 40px;">行业</th>
                     <th style="width: 50px;">标签</th>
                     <th style="width: 150px;">自动标签</th>
                     <th style="width: 600px;">备注</th>
@@ -27,6 +28,7 @@
                             {{ stock.industry if stock.industry else '-' }}<br/>
                             {{ stock.ipo_date if stock.ipo_date else '-' }}
                             </td>
+                            <td>{{ stock.hu_industry if stock.hu_industry else '-' }}</td>
                             <td>
                                 {% if stock.tags %}
                                     {% set tags_list = stock.tags %}
@@ -62,7 +64,7 @@
                             </div>
                         </td>
                         <td>
-                            <button onclick="editTags({{ stock.id }}, '{{ stock.code }}', '{{ stock.code_name }}')" data-tags="{{ stock.tags }}" style="background-color: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-bottom: 5px; display: block;">标签</button>
+                            <button onclick="editTags({{ stock.id }}, '{{ stock.code }}', '{{ stock.code_name }}')" data-tags="{{ stock.tags }}" data-hu-industry="{{ stock.hu_industry }}" style="background-color: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-bottom: 5px; display: block;">标签</button>
                             <button onclick="editRemark({{ stock.id }}, '{{ stock.code }}', '{{ stock.code_name }}', event)" data-remark="{{ stock.remark }}" data-risk-memo="{{ stock.risk_memo }}" style="background-color: #FF9800; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; display: block;">备注</button>
                         </td>
                         </tr>
@@ -106,6 +108,14 @@
                 </div>
             </div>
             
+            <div style="margin: 20px 0;">
+                <p>虎的行业：</p>
+                <select id="huIndustrySelect" style="padding: 8px 12px; border-radius: 4px; border: 1px solid #ddd; min-width: 200px;">
+                    <option value="">- 请选择行业 -</option>
+                    <!-- 行业选项将通过AJAX动态生成 -->
+                </select>
+            </div>
+            
             <div style="text-align: right;">
                 <button onclick="closeTagsModal()" style="background-color: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">取消</button>
                 <button onclick="saveTags()" style="background-color: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">保存</button>
@@ -133,13 +143,48 @@
                     return clone;
                 });
             }
+            
+            // 加载虎的行业列表
+            loadHuIndustries();
         });
+        
+        // 加载虎的行业列表
+        function loadHuIndustries() {
+            return fetch('/api/my_industries')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const huIndustrySelect = document.getElementById('huIndustrySelect');
+                        
+                        // 清空现有选项（保留第一个默认选项）
+                        const defaultOption = huIndustrySelect.firstElementChild;
+                        huIndustrySelect.innerHTML = '';
+                        huIndustrySelect.appendChild(defaultOption);
+                        
+                        // 动态生成行业选项
+                        data.data.forEach(ind => {
+                            const option = document.createElement('option');
+                            option.value = ind;
+                            option.textContent = ind;
+                            huIndustrySelect.appendChild(option);
+                        });
+                    } else {
+                        console.error('获取虎的行业列表失败:', data.message);
+                    }
+                    return data;
+                })
+                .catch(error => {
+                    console.error('获取虎的行业列表失败:', error);
+                    return { success: false, message: error.message };
+                });
+        }
         
         // 打开标签编辑弹窗
         function editTags(stockId, stockCode, stockName) {
             // 获取调用此函数的按钮元素，从中读取标签数据
             const button = event.currentTarget;
             let currentTags = [];
+            let currentHuIndustry = '';
 
             // 尝试从data-tags属性中获取标签数据
             if (button && button.dataset && button.dataset.tags) {
@@ -182,6 +227,11 @@
                         currentTags = [];
                     }
                 }
+            }
+            
+            // 尝试从data-hu-industry属性中获取虎的行业数据
+            if (button && button.dataset && button.dataset.huIndustry) {
+                currentHuIndustry = button.dataset.huIndustry;
             }
             
             // 设置弹窗数据
@@ -231,6 +281,15 @@
             if (tagsModalElem) {
                 tagsModalElem.style.display = 'flex';
             }
+            
+            // 重新加载虎的行业列表，确保获取最新数据
+            loadHuIndustries().then(() => {
+                // 设置虎的行业选择
+                const huIndustrySelectElem = document.getElementById('huIndustrySelect');
+                if (huIndustrySelectElem) {
+                    huIndustrySelectElem.value = currentHuIndustry;
+                }
+            });
         }
     
         // 关闭标签编辑弹窗
@@ -253,7 +312,11 @@
                 selectedTags.push(checkbox.value);
             });
             
-            // 发送AJAX请求保存标签
+            // 获取选中的虎的行业
+            const huIndustrySelect = document.getElementById('huIndustrySelect');
+            const selectedHuIndustry = huIndustrySelect ? huIndustrySelect.value : '';
+            
+            // 发送AJAX请求保存标签和虎的行业
             const xhr = new XMLHttpRequest();
             xhr.open('POST', `/stock_basic/save_tags/${stockId}`, true);
             xhr.setRequestHeader('Content-Type', 'application/json');
@@ -268,7 +331,7 @@
                     }
                 }
             };
-            xhr.send(JSON.stringify({ tags: selectedTags }));
+            xhr.send(JSON.stringify({ tags: selectedTags, hu_industry: selectedHuIndustry }));
         }
     
         // 打开备注编辑弹窗

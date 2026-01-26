@@ -142,7 +142,7 @@
                             </div>
                         </td>
                         <td>
-                            <button onclick="editTags({{ nostock.id }}, '{{ nostock.code }}', '{{ nostock.code_name }}', {{ nostock.tags | tojson | safe }})" style="background-color: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-bottom: 5px; display: block;">编辑标签</button>
+                            <button onclick="editTags({{ nostock.id }}, '{{ nostock.code }}', '{{ nostock.code_name }}', {{ nostock.tags | tojson | safe }}, '{{ nostock.hu_industry }}')" style="background-color: #2196F3; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-bottom: 5px; display: block;">编辑标签</button>
                             <button onclick="editRemark({{ nostock.id }}, '{{ nostock.code }}', '{{ nostock.code_name }}', {{ nostock.remark | tojson | safe }})" style="background-color: #FF9800; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; display: block;">编辑备注</button>
                         </td>
                         </tr>
@@ -212,6 +212,14 @@
                 </div>
             </div>
             
+            <div style="margin: 20px 0;">
+                <p>虎的行业：</p>
+                <select id="huIndustrySelect" style="padding: 8px 12px; border-radius: 4px; border: 1px solid #ddd; min-width: 200px;">
+                    <option value="">- 请选择行业 -</option>
+                    <!-- 行业选项将通过AJAX动态生成 -->
+                </select>
+            </div>
+            
             <div style="text-align: right;">
                 <button onclick="closeTagsModal()" style="background-color: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">取消</button>
                 <button onclick="saveTags()" style="background-color: #2196F3; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">保存</button>
@@ -220,14 +228,51 @@
     </div>
     
     <script>
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 加载虎的行业列表
+            loadHuIndustries();
+        });
+        
         // 更改每页显示数量
         function changePageSize() {
             const per_page = document.getElementById('per_page').value;
             window.location.href = `?page=1&per_page=${per_page}`;
         }
         
+        // 加载虎的行业列表
+        function loadHuIndustries() {
+            return fetch('/api/my_industries')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const huIndustrySelect = document.getElementById('huIndustrySelect');
+                        
+                        // 清空现有选项（保留第一个默认选项）
+                        const defaultOption = huIndustrySelect.firstElementChild;
+                        huIndustrySelect.innerHTML = '';
+                        huIndustrySelect.appendChild(defaultOption);
+                        
+                        // 动态生成行业选项
+                        data.data.forEach(ind => {
+                            const option = document.createElement('option');
+                            option.value = ind;
+                            option.textContent = ind;
+                            huIndustrySelect.appendChild(option);
+                        });
+                    } else {
+                        console.error('获取虎的行业列表失败:', data.message);
+                    }
+                    return data;
+                })
+                .catch(error => {
+                    console.error('获取虎的行业列表失败:', error);
+                    return { success: false, message: error.message };
+                });
+        }
+        
         // 打开标签编辑弹窗
-        function editTags(stockId, stockCode, stockName, currentTags) {
+        function editTags(stockId, stockCode, stockName, currentTags, currentHuIndustry) {
             document.getElementById('modalStockId').value = stockId;
             document.getElementById('modalStockCode').value = stockCode;
             document.getElementById('modalStockName').textContent = stockName;
@@ -252,6 +297,15 @@
             
             // 显示弹窗
             document.getElementById('tagsModal').style.display = 'flex';
+            
+            // 重新加载虎的行业列表，确保获取最新数据
+            loadHuIndustries().then(() => {
+                // 设置虎的行业选择
+                const huIndustrySelectElem = document.getElementById('huIndustrySelect');
+                if (huIndustrySelectElem) {
+                    huIndustrySelectElem.value = currentHuIndustry || '';
+                }
+            });
         }
         
         // 关闭标签编辑弹窗
@@ -271,7 +325,11 @@
                 selectedTags.push(checkbox.value);
             });
             
-            // 发送AJAX请求保存标签
+            // 获取选中的虎的行业
+            const huIndustrySelect = document.getElementById('huIndustrySelect');
+            const selectedHuIndustry = huIndustrySelect ? huIndustrySelect.value : '';
+            
+            // 发送AJAX请求保存标签和虎的行业
             const xhr = new XMLHttpRequest();
             xhr.open('POST', `/nostock_basic/save_tags/${stockId}`, true);
             xhr.setRequestHeader('Content-Type', 'application/json');
@@ -286,7 +344,7 @@
                     }
                 }
             };
-            xhr.send(JSON.stringify({ tags: selectedTags }));
+            xhr.send(JSON.stringify({ tags: selectedTags, hu_industry: selectedHuIndustry }));
         }
         
         // 打开备注编辑弹窗

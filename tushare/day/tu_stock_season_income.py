@@ -28,7 +28,7 @@ def _insert_stock_season_income(conn, df):
     # 准备插入数据，单条插入
     insert_count = 0
     for _, row in df.iterrows():
-        ts_code = row.get('ts_code')
+        ts_code = tu_common.convert_stock_code_2bao(row.get('ts_code'))
         period_date = pd.to_datetime(row.get('end_date'), format='%Y%m%d').strftime('%Y-%m-%d') if pd.notna(row.get('end_date')) else None
         f_ann_date = pd.to_datetime(row.get('f_ann_date'), format='%Y%m%d').strftime('%Y-%m-%d') if pd.notna(row.get('f_ann_date')) else None
         update_flag = row.get('update_flag')
@@ -82,6 +82,7 @@ def _insert_stock_season_income(conn, df):
     
     conn.commit()
     logger.info(f"tu_stock_season_income写入成功: {insert_count} 条记录")
+    return insert_count
 
 #全量查询
 def stock_season_income_all(conn, pro):
@@ -94,11 +95,10 @@ def stock_season_income_all(conn, pro):
         return
     
     #循环接口查询，查询参数ts_code=bao_stock_basic.code
+    total_count = 0
     for row in results:
         code = row[0]
 
-        #数据库格式为sh.600000，tushare格式为600000.SH，需要转换，考虑sh和sz
-        code = tu_common.convert_stock_code(code)
         if not code:
             logger.error(f"股票代码格式错误: {row[0]}")
             continue
@@ -107,40 +107,20 @@ def stock_season_income_all(conn, pro):
         #查询income接口，分页查询
         offset = 0
         limit = 100
-        total_count = 0
         while True:
-            df = pro.income(ts_code=code, limit=limit, offset=offset, fields='ts_code,end_date,f_ann_date,update_flag,basic_eps,total_revenue,total_cogs,total_profit')
+            df = pro.income(ts_code=tu_common.convert_stock_code_2tu(code), limit=limit, offset=offset, fields='ts_code,end_date,f_ann_date,update_flag,basic_eps,total_revenue,total_cogs,total_profit')
             if not df.empty:
-                _insert_stock_season_income(conn, df)
-                count = len(df)
-                total_count += count
-                logger.info(f"income 写入成功: {code}, offset: {offset}, 记录数: {count}")
-                if count < limit:
+                insert_count = _insert_stock_season_income(conn, df)
+                total_count += insert_count
+                logger.info(f"income 写入成功: {code}, offset: {offset}, 记录数: {insert_count}")
+                if len(df) < limit:
                     break
                 offset += limit
             else:
                 logger.info(f"income 无数据: {code}, offset: {offset}")
                 break
-        logger.info(f"income 总计写入: {code}, 总记录数: {total_count}")
+    logger.info(f"income 总计写入: {total_count}")
 
-        #查询fina_indicator接口，分页查询
-        offset = 0
-        limit = 100
-        total_count = 0
-        while True:
-            df = pro.fina_indicator(ts_code=code, limit=limit, offset=offset, fields='ts_code,end_date,f_ann_date,update_flag,eps,total_revenue_ps,bps,cfps,netprofit_margin,grossprofit_margin,cogs_of_sales,roe,roe_yearly,roe_avg,q_eps,q_netprofit_margin,q_gsprofit_margin,q_roe,basic_eps_yoy,cfps_yoy,op_yoy,ebt_yoy,netprofit_yoy,ocf_yoy,tr_yoy,q_gr_yoy,q_op_yoy,q_profit_yoy,q_netprofit_yoy,rd_exp')
-            if not df.empty:
-                _insert_stock_season_fina_indicator(conn, df)
-                count = len(df)
-                total_count += count
-                logger.info(f"fina_indicator 写入成功: {code}, offset: {offset}, 记录数: {count}")
-                if count < limit:
-                    break
-                offset += limit
-            else:
-                logger.info(f"fina_indicator 无数据: {code}, offset: {offset}")
-                break
-        logger.info(f"fina_indicator 总计写入: {code}, 总记录数: {total_count}")
 
 #增量查询
 def stock_season_income_increase(conn, pro):
@@ -153,11 +133,10 @@ def stock_season_income_increase(conn, pro):
         return
     
     #循环从income接口查询，查询参数ts_code=bao_stock_basic.code
+    total_count = 0
     for row in results:
         code = row[0]
 
-        #数据库格式为sh.600000，tushare格式为600000.SH，需要转换，考虑sh和sz
-        code = tu_common.convert_stock_code(code)
         if not code:
             logger.error(f"股票代码格式错误: {row[0]}")
             continue
@@ -175,21 +154,19 @@ def stock_season_income_increase(conn, pro):
         #查询income接口，分页查询
         offset = 0
         limit = 100
-        total_count = 0
         while True:
-            df = pro.income(ts_code=code, start_date=start_date, limit=limit, offset=offset, fields='ts_code,end_date,f_ann_date,update_flag,basic_eps,total_revenue,total_cogs,total_profit')
+            df = pro.income(ts_code=tu_common.convert_stock_code_2tu(code), start_date=start_date, limit=limit, offset=offset, fields='ts_code,end_date,f_ann_date,update_flag,basic_eps,total_revenue,total_cogs,total_profit')
             if not df.empty:
-                _insert_stock_season_income(conn, df)
-                count = len(df)
-                total_count += count
-                logger.info(f"income 写入成功: {code}, offset: {offset}, 记录数: {count}")
-                if count < limit:
+                insert_count = _insert_stock_season_income(conn, df)
+                total_count += insert_count
+                logger.info(f"income 写入成功: {code}, offset: {offset}, 记录数: {insert_count}")
+                if len(df) < limit:
                     break
                 offset += limit
             else:
                 logger.info(f"income 无数据: {code}, offset: {offset}")
                 break
-        logger.info(f"income 总计写入: {code}, 总记录数: {total_count}")
+    logger.info(f"income 总计写入: {total_count}")
 
 if __name__ == "__main__":
     pro = tu_common.get_tushare_pro()

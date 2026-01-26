@@ -1,0 +1,161 @@
+{% extends "stock_basic_search.html" %}
+{% set action_url = "/my_industry_fund" %}
+{% block content %}
+        <!-- 数据表格 -->
+        <table class="stock-basic-table">
+            <!-- 表格列标题行 -->
+            <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th style="width: 150px;">行业</th>
+                    <th style="width: 120px;">公募基金</th>
+                    <th style="width: 120px;">私募基金</th>
+                    <th style="width: 120px;">ETF</th>
+                    <th style="width: 400px;">股票</th>
+                    <th style="width: 300px;">备注</th>
+                    <th style="width: 80px;">操作</th>
+                </tr>
+            </thead>
+
+            <!-- 表格数据行 -->
+            <tbody id="industryFundTableBody">
+                {% if industry_funds %}
+                    {% for fund in industry_funds %}
+                        <tr>
+                            <td>{{ fund.industry if fund.industry is not none else '-' }}</td>
+                            <td>{{ fund.tu_funds_gm if fund.tu_funds_gm is not none else '-' }}</td>
+                            <td>{{ fund.tu_funds_sm if fund.tu_funds_sm is not none else '-' }}</td>
+                            <td>{{ fund.tu_funds_etf if fund.tu_funds_etf is not none else '-' }}</td>
+                            <td>{{ fund.stocks if fund.stocks is not none else '-' }}</td>
+                            <td>
+                                <div style="word-wrap: break-word;">
+                                    {{ fund.remark if fund.remark is not none else '-' }}
+                                </div>
+                            </td>
+                            <td>
+                                <button onclick="editRemark({{ fund.id }}, '{{ fund.industry }}', event)" data-remark="{{ fund.remark if fund.remark is not none else '' }}" style="background-color: #FF9800; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; display: block;">编辑</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 20px;">暂无数据</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    
+    <!-- 备注编辑弹窗 -->
+    <div id="remarkModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background-color: white; padding: 20px; border-radius: 8px; width: 800px; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
+            <h2>编辑备注 - <span id="remarkModalIndustryName"></span></h2>
+            <input type="hidden" id="remarkModalId">
+            
+            <div style="margin: 20px 0;">
+                <p>备注内容（最多1000个文字）：</p>
+                <textarea id="remarkTextarea" rows="5" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; resize: vertical;" maxlength="1000"></textarea>
+                <div style="text-align: right; margin-top: 5px; font-size: 12px; color: #666;">
+                    <span id="charCount">0</span>/1000
+                </div>
+            </div>
+            
+            <div style="text-align: right;">
+                <button onclick="closeRemarkModal()" style="background-color: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">取消</button>
+                <button onclick="saveRemark()" style="background-color: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 打开备注编辑弹窗
+        function editRemark(fundId, industryName, event) {
+            document.getElementById('remarkModalId').value = fundId;
+            document.getElementById('remarkModalIndustryName').textContent = industryName;
+            
+            // 通过事件对象获取按钮元素，然后获取data-remark属性
+            let currentRemark = '';
+            try {
+                // 确保事件对象存在
+                if (event) {
+                    // 获取触发事件的按钮元素
+                    const button = event.target || event.srcElement;
+                    if (button) {
+                        // 获取data-remark属性值
+                        currentRemark = button.getAttribute('data-remark') || '';
+                        if(currentRemark == 'None'){
+                            currentRemark = '';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('获取备注内容失败:', error);
+            }
+            
+            // 设置文本框内容
+            document.getElementById('remarkTextarea').value = currentRemark || '';
+            
+            // 更新字符计数
+            const charCount = document.getElementById('charCount');
+            if (charCount) {
+                charCount.textContent = currentRemark ? currentRemark.length : 0;
+            }
+            
+            // 显示弹窗
+            document.getElementById('remarkModal').style.display = 'flex';
+        }
+    
+        // 关闭备注编辑弹窗
+        function closeRemarkModal() {
+            document.getElementById('remarkModal').style.display = 'none';
+        }
+    
+        // 保存备注
+        function saveRemark() {
+            const fundId = document.getElementById('remarkModalId').value;
+            const remark = document.getElementById('remarkTextarea').value;
+            
+            // 发送AJAX请求保存备注
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `/my_industry_fund/save_remark/${fundId}`, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        // 关闭弹窗并刷新页面
+                        closeRemarkModal();
+                        location.reload();
+                    } else {
+                        alert('保存失败：' + xhr.responseText);
+                    }
+                }
+            };
+            xhr.send(JSON.stringify({ remark: remark }));
+        }
+    </script>
+    
+    <script>
+        // 字符计数功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const textarea = document.getElementById('remarkTextarea');
+            const charCount = document.getElementById('charCount');
+            
+            if (textarea && charCount) {
+                textarea.addEventListener('input', function() {
+                    const count = this.value.length;
+                    charCount.textContent = count;
+                    
+                    // 当接近字数限制时改变颜色
+                    if (count > 900) {
+                        charCount.style.color = '#FF9800';
+                    } else {
+                        charCount.style.color = '#666';
+                    }
+                    
+                    // 当达到字数限制时改变颜色为红色
+                    if (count === 1000) {
+                        charCount.style.color = '#f44336';
+                    }
+                });
+            }
+        });
+    </script>
+{% endblock %}

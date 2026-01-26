@@ -32,7 +32,8 @@ def _insert_stock_season_mainbz(conn, df):
     # 准备插入数据，单条插入，插入前先查询，存在则不插入
     insert_count = 0
     for _, row in df.iterrows():
-        ts_code = row.get('ts_code')
+        ts_code = tu_common.convert_stock_code_2bao(row.get('ts_code'))
+
         period_date = pd.to_datetime(row.get('end_date'), format='%Y%m%d').strftime('%Y-%m-%d') if pd.notna(row.get('end_date')) else None
         bz_item = row.get('bz_item')
         bz_code = row.get('bz_code')
@@ -105,6 +106,7 @@ def _insert_stock_season_mainbz(conn, df):
     conn.commit()
     
     logger.info(f"写入数据库成功: {insert_count} 条记录")
+    return insert_count
 
 #全量查询
 def stock_season_mainbz_all(conn, pro):
@@ -117,34 +119,27 @@ def stock_season_mainbz_all(conn, pro):
         return
     
     #循环从fina_mainbz接口查询，查询参数ts_code=bao_stock_basic.code
+    total_count = 0
     for row in results:
         code = row[0]
-
-        # 转换股票代码格式：数据库格式为sh.600000，tushare格式为600000.SH
-        code = tu_common.convert_stock_code(code)
-        if not code:
-            logger.error(f"股票代码格式错误: {row[0]}")
-            continue
 
         logger.info(f"开始处理股票: {code} ")
         #查询fina_mainbz接口，分页查询
         offset = 0
         limit = 100
-        total_count = 0
         while True:
-            df = pro.fina_mainbz(ts_code=code, limit=limit, offset=offset, fields='ts_code,bz_code,end_date,bz_item,bz_sales,bz_profit,bz_cost,curr_type,update_flag')
+            df = pro.fina_mainbz(ts_code=tu_common.convert_stock_code_2tu(code), limit=limit, offset=offset, fields='ts_code,bz_code,end_date,bz_item,bz_sales,bz_profit,bz_cost,curr_type,update_flag')
             if not df.empty:
-                _insert_stock_season_mainbz(conn, df)
-                count = len(df)
-                total_count += count
-                logger.info(f"fina_mainbz 写入成功: {code}, offset: {offset}, 记录数: {count}")
-                if count < limit:
+                insert_count = _insert_stock_season_mainbz(conn, df)
+                total_count += insert_count
+                logger.info(f"fina_mainbz 写入成功: {code}, offset: {offset}, 记录数: {insert_count}")
+                if len(df) < limit:
                     break
                 offset += limit
             else:
                 logger.info(f"fina_mainbz 无数据: {code}, offset: {offset}")
                 break
-        logger.info(f"fina_mainzb 总计写入: {code}, 总记录数: {total_count}")
+    logger.info(f"fina_mainzb 总计写入: {total_count}")
 
 #增量查询
 def stock_season_mainbz_increase(conn, pro):
@@ -157,16 +152,12 @@ def stock_season_mainbz_increase(conn, pro):
         return
     
     #循环从fina_mainbz接口查询，查询参数ts_code=bao_stock_basic.code
+    total_count = 0
     for row in results:
         code = row[0]
 
-        #数据库格式为sh.600000，tushare格式为600000.SH，需要转换，考虑sh和sz
-        if code.startswith('sh.'):
-            code = code.replace('sh.', '').replace('.SH', '') + '.SH'
-        elif code.startswith('sz.'):
-            code = code.replace('sz.', '').replace('.SZ', '') + '.SZ'
-        else:
-            logger.error(f"股票代码格式错误: {code}")
+        if not code:
+            logger.error(f"股票代码格式错误: {row[0]}")
             continue
 
         #从己有数据中查询最大的日期，后续从此日期往后查询
@@ -174,7 +165,7 @@ def stock_season_mainbz_increase(conn, pro):
         query = """
         SELECT MAX(period_date) FROM tu_stock_season_mainbz WHERE ts_code = :ts_code
         """
-        max_date_result = conn.execute(text(query), {'ts_code': code}).fetchone()
+        max_date_result = conn.execute(text(query), {'ts_code': tu_common.convert_stock_code_2tu(code)}).fetchone()
         if max_date_result[0]:
             start_date = (max_date_result[0] - timedelta(days=1)).strftime('%Y%m%d')
 
@@ -182,21 +173,19 @@ def stock_season_mainbz_increase(conn, pro):
         #查询fina_mainbz接口，分页查询
         offset = 0
         limit = 100
-        total_count = 0
         while True:
-            df = pro.fina_mainbz(ts_code=code, start_date=start_date, limit=limit, offset=offset, fields='ts_code,bz_code,end_date,bz_item,bz_sales,bz_profit,bz_cost,curr_type,update_flag')
+            df = pro.fina_mainbz(ts_code=tu_common.convert_stock_code_2tu(code), start_date=start_date, limit=limit, offset=offset, fields='ts_code,bz_code,end_date,bz_item,bz_sales,bz_profit,bz_cost,curr_type,update_flag')
             if not df.empty:
-                _insert_stock_season_mainbz(conn, df)
-                count = len(df)
-                total_count += count
-                logger.info(f"fina_mainbz 写入成功: {code}, offset: {offset}, 记录数: {count}")
-                if count < limit:
+                insert_count = _insert_stock_season_mainbz(conn, df)
+                total_count += insert_count
+                logger.info(f"fina_mainbz 写入成功: {code}, offset: {offset}, 记录数: {insert_count}")
+                if len(df) < limit:
                     break
                 offset += limit
             else:
                 logger.info(f"fina_mainbz 无数据: {code}, offset: {offset}")
                 break
-        logger.info(f"fina_mainzb 总计写入: {code}, 总记录数: {total_count}")
+    logger.info(f"fina_mainzb 总计写入: {total_count}")
 
 
 if __name__ == "__main__":
@@ -208,7 +197,7 @@ if __name__ == "__main__":
     stock_season_mainbz_all(conn, pro)
 
     #增量更新
-    #def stock_season_mainbz_increase(conn, pro):
+    #stock_season_mainbz_increase(conn, pro)
 
 
     conn.close()

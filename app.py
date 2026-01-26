@@ -62,6 +62,7 @@ class BaoStockBasic(db.Model):
     risk_memo = db.Column(db.String(200))  # 风险备注字段，最多200个文字
     industry = db.Column(db.String(100))  # 所属行业
     industryClassification = db.Column(db.String(100))  # 所属行业类别
+    hu_industry = db.Column(db.String(100))  # 虎的投资行业
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     trade_score = db.Column(db.Float, comment='公司打分，用于量化交易；-1表示黑名单')
@@ -82,6 +83,8 @@ class BaoNoStockBasic(db.Model):
     type = db.Column(db.String(50))  # 证券类型
     status = db.Column(db.String(20))  # 上市状态
     tags = db.Column(db.JSON)  # 标签字段，JSON格式，可以存储多个中文词
+    tags2 = db.Column(db.String(100))  # 标签，逗号分隔的字符串，可选值：观察、量化、不看
+    hu_industry = db.Column(db.String(100))  # 虎的投资行业
     remark = db.Column(db.String(1000))  # 备注字段，最多1000个文字
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
@@ -174,6 +177,21 @@ class BaoNoStockTrade(db.Model):
     __table_args__ = (
         db.UniqueConstraint('code', 'date', name='unique_code_date'),
     )
+
+# 定义我的行业基金数据模型
+class MyIndustryFund(db.Model):
+    __tablename__ = 'my_industry_fund'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    industry = db.Column(db.String(100), nullable=False)  # 行业
+    tu_funds_gm = db.Column(db.String(200))  # 公募基金
+    tu_funds_sm = db.Column(db.String(200))  # 私募基金
+    tu_funds_etf = db.Column(db.String(200))  # ETF
+    stocks = db.Column(db.String(500))  # 股票
+    sort = db.Column(db.Integer, default=0)  # 排序字段
+    remark = db.Column(db.String(1000))  # 备注字段，最多1000个文字
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
 # 导入API蓝图（延迟导入以避免循环依赖）
 def register_api_blueprint():
@@ -691,12 +709,17 @@ def save_stock_tags(id):
         
         # 更新标签
         stock.tags = tags
+        
+        # 更新虎的行业
+        if 'hu_industry' in data:
+            stock.hu_industry = data['hu_industry']
+        
         stock.updated_at = datetime.now()
         
         # 保存到数据库
         db.session.commit()
         
-        return json.dumps({'success': True, 'message': '标签更新成功'})
+        return json.dumps({'success': True, 'message': '标签和行业更新成功'})
     except Exception as e:
         db.session.rollback()
         return json.dumps({'success': False, 'message': str(e)}), 500
@@ -729,6 +752,34 @@ def get_industries_api():
             'message': f'获取行业列表失败: {str(e)}'
         }, 500
 
+
+
+# 获取my_industry_fund行业列表的API接口
+@app.route('/api/my_industries')
+def get_my_industries_api():
+    """
+    获取my_industry_fund表中的所有行业列表
+    
+    返回:
+    - JSON格式的行业列表
+    """
+    try:
+        # 查询所有不重复的industry值
+        industries_list = db.session.execute(
+            text("SELECT DISTINCT industry FROM my_industry_fund WHERE industry IS NOT NULL AND industry != '' ORDER BY sort desc, industry")
+        ).scalars().all()
+        return {
+            'success': True,
+            'data': industries_list,
+            'message': '获取行业列表成功'
+        }
+    except Exception as e:
+        logger.error(f"获取my_industry_fund行业列表API失败: {e}")
+        return {
+            'success': False,
+            'data': [],
+            'message': f'获取行业列表失败: {str(e)}'
+        }, 500
 
 
 # 显示行业分析页面
@@ -1007,12 +1058,17 @@ def save_nostock_tags(id):
         
         # 更新标签和时间戳
         nostock.tags = tags
+        
+        # 更新虎的行业
+        if 'hu_industry' in data:
+            nostock.hu_industry = data['hu_industry']
+        
         nostock.updated_at = datetime.now()
         
         # 提交到数据库
         db.session.commit()
         
-        return json.dumps({'success': True, 'message': '标签保存成功'})
+        return json.dumps({'success': True, 'message': '标签和行业更新成功'})
     except Exception as e:
         # 发生错误时回滚
         db.session.rollback()
@@ -1090,6 +1146,46 @@ def calculate_yearly_stats(data):
         }
     
     return stats
+
+# 显示我的行业基金页面
+@app.route('/my_industry_fund')
+def my_industry_fund_page():
+    try:
+        # 读取my_industry_fund表全部数据，按sort顺序，再按industry顺序
+        industry_funds = MyIndustryFund.query.order_by(MyIndustryFund.sort, MyIndustryFund.industry).all()
+        return render_template('my_industry_fund.html', industry_funds=industry_funds)
+    except Exception as e:
+        logger.error(f"获取我的行业基金数据失败: {e}")
+        return render_template('my_industry_fund.html', industry_funds=[])
+
+# 保存我的行业基金备注的路由
+@app.route('/my_industry_fund/save_remark/<int:id>', methods=['POST'])
+def save_my_industry_fund_remark(id):
+    try:
+        # 查找要更新的记录
+        industry_fund = MyIndustryFund.query.get_or_404(id)
+        
+        # 获取请求数据
+        data = request.get_json()
+        if not data or 'remark' not in data:
+            return json.dumps({'success': False, 'message': '无效的请求数据'}), 400
+        
+        # 验证备注长度
+        remark = data['remark']
+        if len(remark) > 1000:
+            return json.dumps({'success': False, 'message': '备注不能超过1000个文字'}), 400
+        
+        # 更新备注
+        industry_fund.remark = remark
+        industry_fund.updated_at = datetime.now()
+        
+        # 保存到数据库
+        db.session.commit()
+        
+        return json.dumps({'success': True, 'message': '备注更新成功'})
+    except Exception as e:
+        db.session.rollback()
+        return json.dumps({'success': False, 'message': str(e)}), 500
 
 # 指数对比页面
 @app.route('/stock_index_trade', methods=['GET', 'POST'])
